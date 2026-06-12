@@ -213,7 +213,7 @@ export default function AiMentorPage() {
                 style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)' }}>S</div>
               <h1 className="font-bold text-gray-800">Ask Steeves</h1>
             </div>
-            <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by Claude · Context-aware advice based on your profile</p>
+            <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by Ask Sage · Context-aware advice based on your profile</p>
           </div>
           {messages.length > 0 && (
             <button

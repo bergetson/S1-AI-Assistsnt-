@@ -1,7 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { SoldierProfile, ScoredPosition } from '@/lib/types'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const YEAR = new Date().getFullYear()
 
@@ -57,6 +54,21 @@ Focus on AGR pipeline opportunities where relevant — this is often the most im
 Keep responses to 3-5 paragraphs unless a detailed breakdown is specifically requested. Use plain language.`
 }
 
+function buildAskSageMessage(
+  systemPrompt: string,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+): string {
+  const history = messages.slice(0, -1).map(m =>
+    `${m.role === 'user' ? 'Soldier' : 'Steeves'}: ${m.content}`
+  ).join('\n\n')
+
+  const lastMessage = messages[messages.length - 1]?.content ?? ''
+
+  return history
+    ? `${systemPrompt}\n\n--- CONVERSATION HISTORY ---\n${history}\n\n--- CURRENT QUESTION ---\n${lastMessage}`
+    : `${systemPrompt}\n\n--- QUESTION ---\n${lastMessage}`
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, profile, topMatches } = await req.json() as {
@@ -65,43 +77,79 @@ export async function POST(req: Request) {
       topMatches: ScoredPosition[]
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const systemPrompt = buildSystemPrompt(profile, topMatches)
+
+    // Ask Sage (primary — FedRAMP-authorized military AI)
+    if (process.env.ASKSAGE_API_KEY) {
+      const fullMessage = buildAskSageMessage(systemPrompt, messages)
+
+      const sageRes = await fetch('https://api.asksage.ai/server/api/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-tokens': process.env.ASKSAGE_API_KEY,
+        },
+        body: JSON.stringify({ message: fullMessage, temperature: 0.3 }),
+      })
+
+      if (!sageRes.ok) {
+        const errText = await sageRes.text()
+        console.error('Ask Sage error:', sageRes.status, errText)
+        return new Response(
+          JSON.stringify({ message: `Ask Sage returned an error (${sageRes.status}). Check your API key.` }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const data = await sageRes.json() as { response?: string; message?: string }
+      const reply = data.response ?? data.message ?? 'No response received from Ask Sage.'
+
       return new Response(
-        JSON.stringify({
-          message: "The AI mentor requires an Anthropic API key. Add ANTHROPIC_API_KEY to your environment variables. Get a key at console.anthropic.com."
-        }),
+        JSON.stringify({ message: reply }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const systemPrompt = buildSystemPrompt(profile, topMatches)
+    // Anthropic (fallback — requires ANTHROPIC_API_KEY)
+    if (process.env.ANTHROPIC_API_KEY) {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk')
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    const stream = await client.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
-    })
+      const stream = await client.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+      })
 
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            controller.enqueue(encoder.encode(chunk.delta.text))
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        async start(controller) {
+          for await (const chunk of stream) {
+            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+              controller.enqueue(encoder.encode(chunk.delta.text))
+            }
           }
-        }
-        controller.close()
-      },
-    })
+          controller.close()
+        },
+      })
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no',
-      },
-    })
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'X-Accel-Buffering': 'no',
+        },
+      })
+    }
+
+    // No API key configured
+    return new Response(
+      JSON.stringify({
+        message: 'The AI mentor is not yet configured. Ask your S1 to add the ASKSAGE_API_KEY to the deployment environment.'
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (err) {
     console.error('Chat API error:', err)
     return new Response(
