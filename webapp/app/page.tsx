@@ -17,7 +17,7 @@ function Star({ className = '' }: { className?: string }) {
 function BranchCrest({ size = 90 }: { size?: number }) {
   return (
     <Image
-      src="/S1-AI-Assistsnt-/branch-crest.png"
+      src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/branch-crest.png`}
       alt="Adjutant General Corps Branch Crest"
       width={size}
       height={size}

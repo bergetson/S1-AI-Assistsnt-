@@ -1,0 +1,6 @@
+{
+  "rootDirectory": "webapp",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install"
+}
