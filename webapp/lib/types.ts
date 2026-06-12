@@ -178,7 +178,7 @@ export interface Position {
   statusType: ComponentStatus | 'Multiple'
   vacancyStatus: VacancyStatus
   projectedVacancyDate?: string
-  secondaryMosOk: string
+  secondaryMosOk?: string
   notes: string
 }
 

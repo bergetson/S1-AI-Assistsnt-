@@ -1,65 +1,199 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import Link from 'next/link';
+import { useProfileStore } from '@/lib/store';
+
+export default function DashboardPage() {
+  const { profile } = useProfileStore();
+
+  const fields = [
+    profile?.fullName,
+    profile?.rank,
+    profile?.mos,
+    profile?.homeCity,
+    profile?.targetRank,
+    profile?.primaryGoal,
+    profile?.componentStatus,
+    profile?.careerCategory,
+  ];
+  const filledCount = fields.filter((f) => f && String(f).trim() !== '').length;
+  const completionPercent = Math.round((filledCount / 8) * 100);
+
+  const progressColor =
+    completionPercent >= 80
+      ? 'bg-green-500'
+      : completionPercent >= 40
+      ? 'bg-yellow-500'
+      : 'bg-red-400';
+
+  const hasProfileData =
+    profile &&
+    (profile.rank || profile.mos || profile.homeCity || profile.primaryGoal);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gray-50 pb-16">
+      {/* Hero Section */}
+      <div
+        className="w-full py-20 px-8 text-center text-white"
+        style={{ backgroundColor: '#1B4F2A' }}
+      >
+        <div className="text-4xl mb-4">🛡️</div>
+        <h1 className="text-4xl md:text-5xl font-bold">
+          Montana Army National Guard
+        </h1>
+        <p className="text-xl md:text-2xl font-semibold text-amber-300 mt-2">
+          Career Planning &amp; Mentorship System
+        </p>
+        <p className="text-lg text-white/80 mt-4 italic">
+          Understand where you are. Plan where you&apos;re going. Get there with purpose.
+        </p>
+      </div>
+
+      {/* Quick Stats Bar */}
+      <div className="bg-gray-100 border-b py-3 px-8 flex gap-6 text-sm text-gray-700 flex-wrap">
+        {hasProfileData ? (
+          <>
+            {profile.rank && (
+              <span>
+                <span className="font-semibold">Rank:</span> {profile.rank}
+              </span>
+            )}
+            {profile.mos && (
+              <span>
+                <span className="font-semibold">MOS:</span> {profile.mos}
+              </span>
+            )}
+            {profile.homeCity && (
+              <span>
+                <span className="font-semibold">Home:</span> {profile.homeCity}
+              </span>
+            )}
+            {profile.primaryGoal && (
+              <span>
+                <span className="font-semibold">Goal:</span> {profile.primaryGoal}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-gray-500 italic">
+            Complete your profile to see personalized stats
+          </span>
+        )}
+      </div>
+
+      {/* Profile Completion Card */}
+      <div className="bg-white shadow rounded-xl max-w-2xl mx-auto my-8 p-6">
+        <p className="font-semibold text-lg text-gray-800 mb-3">
+          Profile Completion
+        </p>
+        <div className="bg-gray-200 rounded-full h-3 w-full overflow-hidden">
+          <div
+            className={`${progressColor} h-3 rounded-full transition-all duration-500`}
+            style={{ width: `${completionPercent}%` }}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-sm text-gray-600">{completionPercent}% Complete</span>
+          {completionPercent < 100 && (
+            <Link
+              href="/profile"
+              className="text-sm font-medium hover:underline"
+              style={{ color: '#1B4F2A' }}
+            >
+              Complete Your Profile →
+            </Link>
+          )}
         </div>
-      </main>
+      </div>
+
+      {/* Feature Cards Grid */}
+      <div className="max-w-6xl mx-auto px-8 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Card 1 - My Profile */}
+        <Link href="/profile" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-blue-600 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">👤</div>
+            <h2 className="font-bold text-xl mt-3">My Profile</h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              Build your soldier profile with current rank, MOS, career goals, and PME status.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+
+        {/* Card 2 - Position Matches */}
+        <Link href="/matches" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-green-700 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">🎯</div>
+            <h2 className="font-bold text-xl mt-3">Position Matches</h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              Find positions across MTARNG that align with your grade, MOS, goals, and commute tolerance.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+
+        {/* Card 3 - Commute Analysis */}
+        <Link href="/commute" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-indigo-700 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">🗺️</div>
+            <h2 className="font-bold text-xl mt-3">Commute Analysis</h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              See drive times and distances from your home to every MTARNG duty location in Montana.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+
+        {/* Card 4 - Career Timeline */}
+        <Link href="/timeline" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-amber-600 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">📅</div>
+            <h2 className="font-bold text-xl mt-3">Career Timeline</h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              Visualize your enlisted, officer, or warrant officer career path with PME gates and milestones.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+
+        {/* Card 5 - Counseling Sheet */}
+        <Link href="/counseling" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-purple-700 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">📋</div>
+            <h2 className="font-bold text-xl mt-3">Counseling Sheet</h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              Generate a printable DA-4856-style career counseling document with your top matches.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+
+        {/* Card 6 - AI Career Mentor */}
+        <Link href="/ai-mentor" className="block rounded-xl hover:shadow-xl transition">
+          <div className="bg-rose-700 text-white rounded-xl p-6 h-full">
+            <div className="text-3xl">🤖</div>
+            <h2 className="font-bold text-xl mt-3 flex items-center flex-wrap gap-1">
+              AI Career Mentor
+              <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full inline-block ml-2">
+                AI Powered
+              </span>
+            </h2>
+            <p className="mt-2 text-white/85 text-sm leading-relaxed">
+              Chat with an AI mentor trained on ARNG career progression, PME requirements, and MTARNG positions.
+            </p>
+            <div className="mt-4 font-semibold text-white/90">→</div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Demo Data Notice Banner */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl max-w-6xl mx-auto mx-8 my-4 p-4 flex gap-3 items-start">
+        <span className="text-xl flex-shrink-0">⚠️</span>
+        <p className="text-sm text-amber-900">
+          <span className="font-bold">Demo Data Notice:</span>{' '}
+          This tool uses 82 demo MTARNG positions for illustration. Real position data will be loaded by unit administrators before operational use.
+        </p>
+      </div>
     </div>
   );
 }
