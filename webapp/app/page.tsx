@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useProfileStore } from '@/lib/store'
 
 /* ── Star SVG (decorative) ───────────────────────────────────────────────── */
@@ -13,17 +12,72 @@ function Star({ className = '' }: { className?: string }) {
   )
 }
 
-/* ── Branch Crest (S1 / AG Corps insignia) ───────────────────────────────── */
+/* ── S1 Shield (custom, matches the green/gold palette) ──────────────────── */
 function BranchCrest({ size = 90 }: { size?: number }) {
   return (
-    <Image
-      src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/branch-crest.png`}
-      alt="Adjutant General Corps Branch Crest"
+    <svg
       width={size}
-      height={size}
+      height={size * 1.15}
+      viewBox="0 0 100 115"
       className="drop-shadow-2xl"
-      priority
-    />
+      aria-label="Ask Steeves S1 Shield"
+      role="img"
+    >
+      <defs>
+        <linearGradient id="shieldGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e0c080" />
+          <stop offset="50%" stopColor="#C8A96E" />
+          <stop offset="100%" stopColor="#a8854a" />
+        </linearGradient>
+        <linearGradient id="shieldGreen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2a6b3d" />
+          <stop offset="100%" stopColor="#123620" />
+        </linearGradient>
+      </defs>
+
+      {/* Outer gold shield */}
+      <path
+        d="M50 2 L95 14 V52 C95 82 76 102 50 113 C24 102 5 82 5 52 V14 Z"
+        fill="url(#shieldGold)"
+      />
+      {/* Inner green field */}
+      <path
+        d="M50 9 L88 19.5 V52 C88 78 72 95.5 50 105.5 C28 95.5 12 78 12 52 V19.5 Z"
+        fill="url(#shieldGreen)"
+      />
+      {/* Thin gold inner line */}
+      <path
+        d="M50 14 L83 23.5 V52 C83 75 69 91 50 100 C31 91 17 75 17 52 V23.5 Z"
+        fill="none"
+        stroke="#C8A96E"
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+
+      {/* Gold star */}
+      <path
+        d="M50 24 L53.3 33.2 L63 33.2 L55.2 39 L58.3 48.2 L50 42.6 L41.7 48.2 L44.8 39 L37 33.2 L46.7 33.2 Z"
+        fill="url(#shieldGold)"
+      />
+
+      {/* S1 lettering */}
+      <text
+        x="50"
+        y="76"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontWeight="bold"
+        fontSize="27"
+        fill="url(#shieldGold)"
+        letterSpacing="1"
+      >
+        S1
+      </text>
+
+      {/* Banner line under S1 */}
+      <line x1="33" y1="84" x2="67" y2="84" stroke="#C8A96E" strokeWidth="1.5" opacity="0.8" />
+      <line x1="38" y1="88.5" x2="62" y2="88.5" stroke="#C8A96E" strokeWidth="1" opacity="0.5" />
+    </svg>
   )
 }
 
