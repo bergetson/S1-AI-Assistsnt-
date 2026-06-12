@@ -8,6 +8,8 @@ const basePath = isGithubPages ? '/S1-AI-Assistsnt-' : ''
 const nextConfig: NextConfig = {
   ...(isGithubPages && { output: 'export' }),
   basePath,
+  // Static hosts have no image optimizer server — serve images as-is
+  images: { unoptimized: true },
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
