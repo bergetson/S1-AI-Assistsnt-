@@ -1,7 +1,7 @@
 import type { CityPair } from '../types'
 
 export const MT_CITIES = [
-  'Billings', 'Bozeman', 'Butte', 'Great Falls', 'Helena',
+  'Billings', 'Bozeman', 'Butte', 'Fort Harrison', 'Great Falls', 'Helena',
   'Kalispell', 'Missoula', 'Miles City', 'Dillon', 'Havre',
   'Lewistown', 'Livingston', 'Glendive', 'Glasgow', 'Wolf Point',
   'Whitefish', 'Anaconda', 'Shelby',
@@ -65,9 +65,15 @@ for (const city of MT_CITIES) {
 
 export const cityPairs = Array.from(allPairs.values())
 
+// Fort Harrison (Ft William Harrison) is 5 mi / 10 min from Helena — alias it
+const CITY_ALIASES: Record<string, string> = { 'Fort Harrison': 'Helena' }
+function normalize(city: string): string { return CITY_ALIASES[city] ?? city }
+
 export function getCommute(from: string, to: string): { miles: number; minutes: number; route: string } | null {
-  const key = `${from}|${to}`
-  const pair = allPairs.get(key)
+  const f = normalize(from)
+  const t = normalize(to)
+  if (f === t && from !== to) return { miles: 5, minutes: 10, route: 'Helena / Fort Harrison' }
+  const pair = allPairs.get(`${f}|${t}`)
   if (pair) return { miles: pair.miles, minutes: pair.minutes, route: pair.route }
   return null
 }
