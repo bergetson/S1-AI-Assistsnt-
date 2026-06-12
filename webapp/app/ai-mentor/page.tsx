@@ -5,6 +5,7 @@ import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
 import { scoreAllPositions, getPmeGaps } from '@/lib/scoring'
 import { buildSystemPrompt, buildFullMessage, queryAskSage, getStoredCredentials, setStoredCredentials } from '@/lib/asksage'
+import { queryClaude, getStoredClaudeKey, setStoredClaudeKey } from '@/lib/claude'
 import Link from 'next/link'
 
 interface Message {
@@ -31,6 +32,8 @@ export default function AiMentorPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [creds, setCreds] = useState({ email: '', apiKey: '' })
+  const [claudeKey, setClaudeKey] = useState('')
+  const [claudeKeyInput, setClaudeKeyInput] = useState('')
   const [emailInput, setEmailInput] = useState('')
   const [keyInput, setKeyInput] = useState('')
   const [showKeySettings, setShowKeySettings] = useState(false)
@@ -39,15 +42,25 @@ export default function AiMentorPage() {
 
   useEffect(() => {
     setCreds(getStoredCredentials())
+    setClaudeKey(getStoredClaudeKey())
   }, [])
 
-  const hasCreds = Boolean(creds.email && creds.apiKey)
+  // Claude (cheapest: Haiku) is the preferred provider; Ask Sage is fallback
+  const hasCreds = Boolean(claudeKey || (creds.email && creds.apiKey))
+  const providerName = claudeKey ? 'Claude' : 'Ask Sage'
 
   function saveApiKey() {
+    if (claudeKeyInput.trim()) {
+      setStoredClaudeKey(claudeKeyInput)
+      setClaudeKey(claudeKeyInput.trim())
+    }
     const email = emailInput.trim() || creds.email
     const apiKey = keyInput.trim() || creds.apiKey
-    setStoredCredentials(email, apiKey)
-    setCreds({ email, apiKey })
+    if (email || apiKey) {
+      setStoredCredentials(email, apiKey)
+      setCreds({ email, apiKey })
+    }
+    setClaudeKeyInput('')
     setEmailInput('')
     setKeyInput('')
     setShowKeySettings(false)
@@ -66,7 +79,7 @@ export default function AiMentorPage() {
     if (!text.trim() || isLoading) return
     if (!hasCreds) {
       setShowKeySettings(true)
-      setError('Add your Ask Sage account email and API key first (gear icon, top right).')
+      setError('Add an API key first (gear icon, top right).')
       return
     }
     setError(null)
@@ -82,11 +95,14 @@ export default function AiMentorPage() {
 
     try {
       const systemPrompt = buildSystemPrompt(profile, topMatches)
-      const fullMessage = buildFullMessage(
-        systemPrompt,
-        newMessages.map(m => ({ role: m.role, content: m.content }))
-      )
-      const reply = await queryAskSage(fullMessage, creds.email, creds.apiKey)
+      const history = newMessages.map(m => ({ role: m.role, content: m.content }))
+
+      let reply: string
+      if (claudeKey) {
+        reply = await queryClaude(systemPrompt, history, claudeKey)
+      } else {
+        reply = await queryAskSage(buildFullMessage(systemPrompt, history), creds.email, creds.apiKey)
+      }
 
       setMessages(prev => prev.map((m, i) =>
         i === prev.length - 1 ? { ...m, content: reply, streaming: false } : m
@@ -210,7 +226,7 @@ export default function AiMentorPage() {
                 style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)' }}>S</div>
               <h1 className="font-bold text-gray-800">Ask Steeves</h1>
             </div>
-            <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by Ask Sage · Context-aware advice based on your profile</p>
+            <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by {providerName} · Context-aware advice based on your profile</p>
           </div>
           <div className="flex items-center gap-2">
             {messages.length > 0 && (
@@ -236,28 +252,42 @@ export default function AiMentorPage() {
           <div className="px-4 py-3 border-b border-gray-200 bg-amber-50 flex-shrink-0">
             <p className="text-xs text-amber-800 mb-2 font-medium">
               {hasCreds
-                ? 'Ask Sage credentials are configured. Enter new values below to replace them.'
-                : 'Enter your Ask Sage account email and API key (from asksage.ai → Account → API Keys). Stored only in this browser — sent nowhere except directly to Ask Sage.'}
+                ? `Using ${providerName}. Enter new values below to replace the saved keys.`
+                : 'Add a Claude API key (recommended) or Ask Sage credentials. Keys are stored only in this browser and sent nowhere except directly to the AI provider.'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="email"
-                value={emailInput}
-                onChange={e => setEmailInput(e.target.value)}
-                placeholder={creds.email ? `Email (current: ${creds.email})` : 'Ask Sage account email…'}
-                className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-              <input
-                type="password"
-                value={keyInput}
-                onChange={e => setKeyInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
-                placeholder={creds.apiKey ? 'API key (saved — paste to replace)' : 'Ask Sage API key…'}
-                className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 items-center">
+                <span className="text-xs font-semibold text-amber-900 w-20 flex-shrink-0">Claude</span>
+                <input
+                  type="password"
+                  value={claudeKeyInput}
+                  onChange={e => setClaudeKeyInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
+                  placeholder={claudeKey ? 'Claude API key (saved — paste to replace)' : 'Claude API key (sk-ant-…)'}
+                  className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 items-center">
+                <span className="text-xs font-semibold text-amber-900 w-20 flex-shrink-0">Ask Sage</span>
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  placeholder={creds.email ? `Email (current: ${creds.email})` : 'Ask Sage account email…'}
+                  className="flex-1 w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <input
+                  type="password"
+                  value={keyInput}
+                  onChange={e => setKeyInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
+                  placeholder={creds.apiKey ? 'API key (saved)' : 'Ask Sage API key…'}
+                  className="flex-1 w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
               <button
                 onClick={saveApiKey}
-                className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold"
+                className="self-end px-4 py-1.5 rounded-lg text-white text-sm font-semibold"
                 style={{ backgroundColor: '#1B4F2A' }}
               >
                 Save

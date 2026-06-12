@@ -34,6 +34,7 @@ jobs:
         working-directory: webapp
         env:
           GITHUB_PAGES: true
+          NEXT_PUBLIC_CLAUDE_API_KEY: ${{ secrets.Claude_API }}
           NEXT_PUBLIC_ASKSAGE_API_KEY: ${{ secrets.ASKSAGE_API_KEY }}
           NEXT_PUBLIC_ASKSAGE_EMAIL: ${{ secrets.ASKSAGE_EMAIL }}
         run: npm run build
