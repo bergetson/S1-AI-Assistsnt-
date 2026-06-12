@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
-import { scoreAllPositions, matchLabelColor, getPmeGaps } from '@/lib/scoring'
+import { scoreAllPositions, getPmeGaps } from '@/lib/scoring'
+import { buildSystemPrompt, buildFullMessage, queryAskSage, getStoredApiKey, setStoredApiKey } from '@/lib/asksage'
 import Link from 'next/link'
 
 interface Message {
@@ -29,8 +30,23 @@ export default function AiMentorPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [apiKey, setApiKey] = useState('')
+  const [keyInput, setKeyInput] = useState('')
+  const [showKeySettings, setShowKeySettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    setApiKey(getStoredApiKey())
+  }, [])
+
+  function saveApiKey() {
+    setStoredApiKey(keyInput)
+    setApiKey(keyInput.trim())
+    setKeyInput('')
+    setShowKeySettings(false)
+    setError(null)
+  }
 
   const scored = scoreAllPositions(profile, positions)
   const topMatches = scored.slice(0, 10)
@@ -42,6 +58,11 @@ export default function AiMentorPage() {
 
   async function sendMessage(text: string) {
     if (!text.trim() || isLoading) return
+    if (!apiKey) {
+      setShowKeySettings(true)
+      setError('Add your Ask Sage API key first (gear icon, top right).')
+      return
+    }
     setError(null)
 
     const userMsg: Message = { role: 'user', content: text.trim() }
@@ -54,49 +75,19 @@ export default function AiMentorPage() {
     setMessages(prev => [...prev, assistantMsg])
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          profile,
-          topMatches,
-        }),
-      })
-
-      // Handle JSON error response (no API key, etc.)
-      const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        const data = await res.json()
-        setMessages(prev => prev.map((m, i) =>
-          i === prev.length - 1 ? { ...m, content: data.message || data.error, streaming: false } : m
-        ))
-        setIsLoading(false)
-        return
-      }
-
-      if (!res.body) throw new Error('No response body')
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-        const current = accumulated
-        setMessages(prev => prev.map((m, i) =>
-          i === prev.length - 1 ? { ...m, content: current, streaming: true } : m
-        ))
-      }
+      const systemPrompt = buildSystemPrompt(profile, topMatches)
+      const fullMessage = buildFullMessage(
+        systemPrompt,
+        newMessages.map(m => ({ role: m.role, content: m.content }))
+      )
+      const reply = await queryAskSage(fullMessage, apiKey)
 
       setMessages(prev => prev.map((m, i) =>
-        i === prev.length - 1 ? { ...m, streaming: false } : m
+        i === prev.length - 1 ? { ...m, content: reply, streaming: false } : m
       ))
     } catch (err) {
       console.error(err)
-      setError('Failed to get a response. Check your connection and API key.')
+      setError(err instanceof Error ? err.message : 'Failed to get a response. Check your connection and API key.')
       setMessages(prev => prev.slice(0, -1))
     } finally {
       setIsLoading(false)
@@ -215,15 +206,52 @@ export default function AiMentorPage() {
             </div>
             <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by Ask Sage · Context-aware advice based on your profile</p>
           </div>
-          {messages.length > 0 && (
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={() => setMessages([])}
+                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded border border-gray-200"
+              >
+                Clear chat
+              </button>
+            )}
             <button
-              onClick={() => setMessages([])}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded border border-gray-200"
+              onClick={() => setShowKeySettings(v => !v)}
+              title="Ask Sage API key settings"
+              className={`text-sm px-2 py-1 rounded border ${apiKey ? 'text-gray-400 border-gray-200 hover:text-gray-600' : 'text-amber-700 border-amber-300 bg-amber-50'}`}
             >
-              Clear chat
+              ⚙ {apiKey ? '' : 'Set API Key'}
             </button>
-          )}
+          </div>
         </div>
+
+        {/* API key settings panel */}
+        {showKeySettings && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-amber-50 flex-shrink-0">
+            <p className="text-xs text-amber-800 mb-2 font-medium">
+              {apiKey
+                ? 'An Ask Sage API key is configured. Paste a new one below to replace it, or leave blank and save to remove it.'
+                : 'Paste your Ask Sage API key. It is stored only in this browser — never sent anywhere except directly to Ask Sage.'}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={keyInput}
+                onChange={e => setKeyInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
+                placeholder="Ask Sage API key…"
+                className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <button
+                onClick={saveApiKey}
+                className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold"
+                style={{ backgroundColor: '#1B4F2A' }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">

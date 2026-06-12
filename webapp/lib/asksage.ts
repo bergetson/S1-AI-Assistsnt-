@@ -1,8 +1,8 @@
-import type { SoldierProfile, ScoredPosition } from '@/lib/types'
+import type { SoldierProfile, ScoredPosition } from './types'
 
 const YEAR = new Date().getFullYear()
 
-function buildSystemPrompt(profile: SoldierProfile, topMatches: ScoredPosition[]): string {
+export function buildSystemPrompt(profile: SoldierProfile, topMatches: ScoredPosition[]): string {
   const matchSummary = topMatches.slice(0, 8).map(p =>
     `  - ${p.grade} ${p.dutyTitle} @ ${p.unit}, ${p.city} | Score: ${p.totalScore}/100 | ${p.matchLabel} | ${p.commuteMins >= 0 ? p.commuteMins + ' min drive' : 'commute unknown'} | ${p.vacancyStatus}`
   ).join('\n')
@@ -54,7 +54,7 @@ Focus on AGR pipeline opportunities where relevant — this is often the most im
 Keep responses to 3-5 paragraphs unless a detailed breakdown is specifically requested. Use plain language.`
 }
 
-function buildAskSageMessage(
+export function buildFullMessage(
   systemPrompt: string,
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
 ): string {
@@ -69,92 +69,38 @@ function buildAskSageMessage(
     : `${systemPrompt}\n\n--- QUESTION ---\n${lastMessage}`
 }
 
-export async function POST(req: Request) {
-  try {
-    const { messages, profile, topMatches } = await req.json() as {
-      messages: Array<{ role: 'user' | 'assistant'; content: string }>
-      profile: SoldierProfile
-      topMatches: ScoredPosition[]
-    }
+// Calls Ask Sage directly from the browser — required for static hosting
+// (GitHub Pages has no server to proxy through).
+export async function queryAskSage(message: string, apiKey: string): Promise<string> {
+  const res = await fetch('https://api.asksage.ai/server/api/query', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-access-tokens': apiKey,
+    },
+    body: JSON.stringify({ message, temperature: 0.3 }),
+  })
 
-    const systemPrompt = buildSystemPrompt(profile, topMatches)
-
-    // Ask Sage (primary — FedRAMP-authorized military AI)
-    if (process.env.ASKSAGE_API_KEY) {
-      const fullMessage = buildAskSageMessage(systemPrompt, messages)
-
-      const sageRes = await fetch('https://api.asksage.ai/server/api/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-tokens': process.env.ASKSAGE_API_KEY,
-        },
-        body: JSON.stringify({ message: fullMessage, temperature: 0.3 }),
-      })
-
-      if (!sageRes.ok) {
-        const errText = await sageRes.text()
-        console.error('Ask Sage error:', sageRes.status, errText)
-        return new Response(
-          JSON.stringify({ message: `Ask Sage returned an error (${sageRes.status}). Check your API key.` }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
-      }
-
-      const data = await sageRes.json() as { response?: string; message?: string }
-      const reply = data.response ?? data.message ?? 'No response received from Ask Sage.'
-
-      return new Response(
-        JSON.stringify({ message: reply }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Anthropic (fallback — requires ANTHROPIC_API_KEY)
-    if (process.env.ANTHROPIC_API_KEY) {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk')
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-      const stream = await client.messages.stream({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-      })
-
-      const encoder = new TextEncoder()
-      const readable = new ReadableStream({
-        async start(controller) {
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-              controller.enqueue(encoder.encode(chunk.delta.text))
-            }
-          }
-          controller.close()
-        },
-      })
-
-      return new Response(readable, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'X-Accel-Buffering': 'no',
-        },
-      })
-    }
-
-    // No API key configured
-    return new Response(
-      JSON.stringify({
-        message: 'The AI mentor is not yet configured. Ask your S1 to add the ASKSAGE_API_KEY to the deployment environment.'
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (err) {
-    console.error('Chat API error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('Ask Sage rejected the API key. Check that the key is valid and active.')
   }
+  if (!res.ok) {
+    throw new Error(`Ask Sage returned an error (${res.status}). Try again in a moment.`)
+  }
+
+  const data = await res.json() as { response?: string; message?: string }
+  return data.response ?? data.message ?? 'No response received from Ask Sage.'
+}
+
+const STORAGE_KEY = 'asksage-api-key'
+
+export function getStoredApiKey(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(STORAGE_KEY) ?? process.env.NEXT_PUBLIC_ASKSAGE_API_KEY ?? ''
+}
+
+export function setStoredApiKey(key: string): void {
+  if (typeof window === 'undefined') return
+  if (key.trim()) localStorage.setItem(STORAGE_KEY, key.trim())
+  else localStorage.removeItem(STORAGE_KEY)
 }

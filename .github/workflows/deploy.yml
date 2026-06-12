@@ -34,6 +34,7 @@ jobs:
         working-directory: webapp
         env:
           GITHUB_PAGES: true
+          NEXT_PUBLIC_ASKSAGE_API_KEY: ${{ secrets.ASKSAGE_API_KEY }}
         run: npm run build
 
       - name: Upload Pages artifact
