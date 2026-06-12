@@ -1,4 +1,4 @@
-import type { SoldierProfile, Position, ScoredPosition, MatchLabel, CommuteLimit } from './types'
+import type { SoldierProfile, Position, ScoredPosition, MatchLabel, CommuteLimit, CareerCategory } from './types'
 import { getCommute } from './data/cities'
 
 const RANK_NUM: Record<string, number> = {
@@ -112,10 +112,36 @@ export function scorePosition(profile: SoldierProfile, pos: Position): ScoredPos
   }
 }
 
+// Only score positions that match the soldier's career category.
+// Officers cannot fill Enlisted or Warrant positions, and vice versa.
 export function scoreAllPositions(profile: SoldierProfile, positions: Position[]): ScoredPosition[] {
   return positions
+    .filter(p => p.careerCategory === profile.careerCategory)
     .map(p => scorePosition(profile, p))
     .sort((a, b) => b.totalScore - a.totalScore)
+}
+
+// Cross-category alternate paths — only shown when the soldier has expressed interest.
+// Enlisted with Warrant interest → show Warrant positions (requires WOCS).
+// Enlisted with OCS interest (switch MOS goal) → show Officer positions (requires OCS).
+export function scoreAlternatePaths(profile: SoldierProfile, positions: Position[]): ScoredPosition[] {
+  const altCats: CareerCategory[] = []
+  if (profile.careerCategory === 'Enlisted') {
+    if (profile.warrantInterest !== 'No') altCats.push('Warrant')
+    if (profile.primaryGoal === 'Switch MOS/Branch' || profile.primaryGoal === 'Pursue Senior Leader Path') altCats.push('Officer')
+  }
+  if (altCats.length === 0) return []
+
+  return positions
+    .filter(p => altCats.includes(p.careerCategory))
+    .map(p => ({
+      ...scorePosition(profile, p),
+      pathNote: p.careerCategory === 'Warrant'
+        ? 'Requires WOCS selection & WO appointment — not a lateral move'
+        : 'Requires Officer Candidate School (OCS) commissioning',
+    }))
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .slice(0, 15)
 }
 
 export function matchLabelColor(label: MatchLabel): string {

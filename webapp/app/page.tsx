@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useProfileStore } from '@/lib/store'
 
 /* ── Star SVG (decorative) ───────────────────────────────────────────────── */
@@ -12,24 +13,17 @@ function Star({ className = '' }: { className?: string }) {
   )
 }
 
-/* ── Shield SVG (Steeves' badge) ─────────────────────────────────────────── */
-function SteevesShield({ size = 80 }: { size?: number }) {
+/* ── Branch Crest (S1 / AG Corps insignia) ───────────────────────────────── */
+function BranchCrest({ size = 90 }: { size?: number }) {
   return (
-    <svg width={size} height={Math.round(size * 1.12)} viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Outer shield */}
-      <path d="M40 2L4 16V44C4 65 19 81 40 88C61 81 76 65 76 44V16L40 2Z"
-        fill="#0D2614" stroke="#C8A96E" strokeWidth="2.5"/>
-      {/* Inner shield accent */}
-      <path d="M40 10L12 21V43C12 60 23 74 40 80C57 74 68 60 68 43V21L40 10Z"
-        fill="#1B4F2A" stroke="#C8A96E" strokeWidth="1.5" strokeOpacity="0.6"/>
-      {/* Rank stars */}
-      <circle cx="28" cy="34" r="4" fill="#C8A96E"/>
-      <circle cx="40" cy="30" r="5" fill="#C8A96E"/>
-      <circle cx="52" cy="34" r="4" fill="#C8A96E"/>
-      {/* "S" letter */}
-      <text x="40" y="62" textAnchor="middle" fill="#C8A96E"
-        fontSize="22" fontWeight="bold" fontFamily="Georgia, serif" letterSpacing="0">S</text>
-    </svg>
+    <Image
+      src="/S1-AI-Assistsnt-/branch-crest.png"
+      alt="Adjutant General Corps Branch Crest"
+      width={size}
+      height={size}
+      className="drop-shadow-2xl"
+      priority
+    />
   )
 }
 
@@ -47,7 +41,7 @@ const FEATURES = [
     href: '/matches',
     icon: '🎯',
     title: 'Position Matches',
-    desc: 'Every MTARNG position scored 0–100 against your profile. Filter, sort, and find your next move.',
+    desc: '532 real MTARNG positions scored 0–100 against your profile — only positions you are eligible for. Filter by city, grade, and status.',
     bg: 'from-emerald-700 to-emerald-900',
     badge: null,
   },
@@ -106,8 +100,8 @@ const HOW_IT_WORKS = [
 
 /* ── STATS ───────────────────────────────────────────────────────────────── */
 const STATS = [
-  { value: '82', label: 'MTARNG Positions Tracked' },
-  { value: '18', label: 'Montana Cities Covered' },
+  { value: '532', label: 'Real MTARNG Positions' },
+  { value: '5', label: 'Montana Duty Stations' },
   { value: '0–100', label: 'Fit Score on Every Position' },
   { value: 'AI', label: 'Career Mentor Built In' },
 ]
@@ -151,9 +145,9 @@ export default function LandingPage() {
 
         <div className="relative z-10 text-center max-w-4xl mx-auto flex flex-col items-center">
 
-          {/* Badge / Shield */}
-          <div className="mb-8 drop-shadow-2xl animate-[fadeInDown_0.7s_ease]">
-            <SteevesShield size={90} />
+          {/* S1 / AG Branch Crest */}
+          <div className="mb-8 animate-[fadeInDown_0.7s_ease]">
+            <BranchCrest size={100} />
           </div>
 
           {/* Eyebrow */}
@@ -390,22 +384,6 @@ export default function LandingPage() {
       </section>
 
       {/* ╔══════════════════════════════════════════════════════════════╗ */}
-      {/*  DEMO DATA NOTICE                                              */}
-      {/* ╚══════════════════════════════════════════════════════════════╝ */}
-      <section className="py-8 px-6 bg-amber-50 border-t border-amber-200">
-        <div className="max-w-5xl mx-auto flex gap-4 items-start">
-          <span className="text-2xl flex-shrink-0">⚠️</span>
-          <div className="text-sm text-amber-900">
-            <strong>Demo Data Notice:</strong> Ask Steeves currently uses{' '}
-            <strong>82 demo MTARNG positions</strong> across 9 cities for illustration purposes.
-            Real MTARNG force structure data will be loaded by your unit S1 or administrator before
-            operational use. All matching, scoring, and AI advice will update automatically when
-            real data is loaded.
-          </div>
-        </div>
-      </section>
-
-      {/* ╔══════════════════════════════════════════════════════════════╗ */}
       {/*  FINAL CTA                                                     */}
       {/* ╚══════════════════════════════════════════════════════════════╝ */}
       <section
@@ -413,7 +391,7 @@ export default function LandingPage() {
         style={{ background: 'linear-gradient(160deg, #0D2614, #1B4F2A)' }}
       >
         <div className="max-w-3xl mx-auto">
-          <SteevesShield size={56} />
+          <BranchCrest size={64} />
           <h2 className="text-4xl font-extrabold mt-6 mb-4">
             Ready to plan your career?
           </h2>

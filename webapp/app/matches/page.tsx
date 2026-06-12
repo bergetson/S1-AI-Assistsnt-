@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
-import { scoreAllPositions, matchLabelColor, matchLabelDot } from '@/lib/scoring'
+import { scoreAllPositions, scoreAlternatePaths, matchLabelColor, matchLabelDot } from '@/lib/scoring'
 import { cn } from '@/lib/utils'
 import type { ScoredPosition, MatchLabel } from '@/lib/types'
 
@@ -39,6 +39,8 @@ export default function MatchesPage() {
   const { profile } = useProfileStore()
 
   const scored = useMemo(() => scoreAllPositions(profile, positions), [profile])
+  const alternatePaths = useMemo(() => scoreAlternatePaths(profile, positions), [profile])
+  const [showAlternate, setShowAlternate] = useState(false)
 
   const [filterCity, setFilterCity] = useState('')
   const [filterLabel, setFilterLabel] = useState('')
@@ -185,20 +187,7 @@ export default function MatchesPage() {
             </select>
           </div>
 
-          {/* Category */}
-          <div className="flex flex-col">
-            <label className={labelClass}>Category</label>
-            <select
-              className={selectClass}
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}
-            >
-              <option value="">All Categories</option>
-              <option value="Enlisted">Enlisted</option>
-              <option value="Officer">Officer</option>
-              <option value="Warrant">Warrant</option>
-            </select>
-          </div>
+
 
           {/* Status type filter */}
           <div className="flex flex-col">
@@ -254,6 +243,32 @@ export default function MatchesPage() {
           </div>
         )}
       </div>
+
+      {/* F. Alternate career paths (cross-category, only shown when applicable) */}
+      {alternatePaths.length > 0 && (
+        <div className="px-8 pb-8">
+          <button
+            type="button"
+            onClick={() => setShowAlternate(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-900 font-semibold text-sm hover:bg-amber-100 transition"
+          >
+            <span>⚠️ Career Path Change Opportunities — {alternatePaths.length} positions require a category change (OCS / WOCS)</span>
+            <span>{showAlternate ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showAlternate && (
+            <div className="mt-4 space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                <strong>These positions are NOT currently eligible for your career category.</strong> They are shown because you have expressed interest in changing your career track. Each requires a separate accession process before you can serve in that role.
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {alternatePaths.map(pos => (
+                  <PositionCard key={pos.id} pos={pos} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -374,6 +389,13 @@ function PositionCard({ pos }: { pos: ScoredPosition }) {
       {pos.notes && (
         <div className="mt-2 text-xs text-gray-500 italic">
           {pos.notes.length > 80 ? pos.notes.slice(0, 80) + '…' : pos.notes}
+        </div>
+      )}
+
+      {/* Cross-category path note */}
+      {pos.pathNote && (
+        <div className="mt-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+          ⚠️ {pos.pathNote}
         </div>
       )}
     </div>

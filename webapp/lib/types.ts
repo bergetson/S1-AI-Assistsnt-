@@ -191,6 +191,7 @@ export interface ScoredPosition extends Position {
   matchLabel: MatchLabel
   commuteMins: number
   commuteMiles: number
+  pathNote?: string
 }
 
 // ── City pair ────────────────────────────────────────────────────────────────
