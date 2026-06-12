@@ -69,38 +69,117 @@ export function buildFullMessage(
     : `${systemPrompt}\n\n--- QUESTION ---\n${lastMessage}`
 }
 
-// Calls Ask Sage directly from the browser — required for static hosting
-// (GitHub Pages has no server to proxy through).
-export async function queryAskSage(message: string, apiKey: string): Promise<string> {
-  const res = await fetch('https://api.asksage.ai/server/api/query', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-access-tokens': apiKey,
-    },
-    body: JSON.stringify({ message, temperature: 0.3 }),
-  })
+// Ask Sage auth is two-step: exchange email + API key for a 24-hour access
+// token, then send that token with each query. All calls go directly from
+// the browser — required for static hosting (GitHub Pages has no server).
+const USER_BASE = 'https://api.asksage.ai/user'
+const SERVER_BASE = 'https://api.asksage.ai/server'
+
+const TOKEN_KEY = 'asksage-access-token'
+const TOKEN_TIME_KEY = 'asksage-token-time'
+const TOKEN_TTL_MS = 23 * 60 * 60 * 1000  // refresh before the 24h expiry
+
+async function fetchAccessToken(email: string, apiKey: string): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch(`${USER_BASE}/get-token-with-api-key`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ email, api_key: apiKey }),
+    })
+  } catch {
+    throw new Error('Could not reach Ask Sage. If you are on a restricted network, check that api.asksage.ai is allowed.')
+  }
 
   if (res.status === 401 || res.status === 403) {
-    throw new Error('Ask Sage rejected the API key. Check that the key is valid and active.')
+    throw new Error('Ask Sage rejected the email/API key combination. Check both in the ⚙ settings.')
   }
+  if (!res.ok) {
+    throw new Error(`Ask Sage token request failed (${res.status}).`)
+  }
+
+  const data = await res.json() as { response?: { access_token?: string }; access_token?: string }
+  const token = data.response?.access_token ?? data.access_token
+  if (!token) throw new Error('Ask Sage did not return an access token.')
+
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(TOKEN_TIME_KEY, String(Date.now()))
+  return token
+}
+
+async function getAccessToken(email: string, apiKey: string, forceRefresh = false): Promise<string> {
+  if (!forceRefresh) {
+    const cached = localStorage.getItem(TOKEN_KEY)
+    const time = Number(localStorage.getItem(TOKEN_TIME_KEY) ?? 0)
+    if (cached && Date.now() - time < TOKEN_TTL_MS) return cached
+  }
+  return fetchAccessToken(email, apiKey)
+}
+
+export async function queryAskSage(message: string, email: string, apiKey: string): Promise<string> {
+  let token = await getAccessToken(email, apiKey)
+
+  let res: Response
+  try {
+    res = await fetch(`${SERVER_BASE}/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'x-access-tokens': token,
+      },
+      body: JSON.stringify({ message, temperature: 0.3 }),
+    })
+  } catch {
+    throw new Error('Could not reach Ask Sage. If you are on a restricted network, check that api.asksage.ai is allowed.')
+  }
+
+  // Expired/invalid token — refresh once and retry
+  if (res.status === 401) {
+    token = await getAccessToken(email, apiKey, true)
+    res = await fetch(`${SERVER_BASE}/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'x-access-tokens': token,
+      },
+      body: JSON.stringify({ message, temperature: 0.3 }),
+    })
+  }
+
   if (!res.ok) {
     throw new Error(`Ask Sage returned an error (${res.status}). Try again in a moment.`)
   }
 
-  const data = await res.json() as { response?: string; message?: string }
-  return data.response ?? data.message ?? 'No response received from Ask Sage.'
+  const data = await res.json() as { message?: string; response?: string }
+  // /server/query returns the answer in "message"
+  return data.message ?? data.response ?? 'No response received from Ask Sage.'
 }
 
-const STORAGE_KEY = 'asksage-api-key'
+const KEY_STORAGE = 'asksage-api-key'
+const EMAIL_STORAGE = 'asksage-email'
 
-export function getStoredApiKey(): string {
-  if (typeof window === 'undefined') return ''
-  return localStorage.getItem(STORAGE_KEY) ?? process.env.NEXT_PUBLIC_ASKSAGE_API_KEY ?? ''
+export interface AskSageCredentials {
+  email: string
+  apiKey: string
 }
 
-export function setStoredApiKey(key: string): void {
+export function getStoredCredentials(): AskSageCredentials {
+  if (typeof window === 'undefined') return { email: '', apiKey: '' }
+  return {
+    email: localStorage.getItem(EMAIL_STORAGE) ?? process.env.NEXT_PUBLIC_ASKSAGE_EMAIL ?? '',
+    apiKey: localStorage.getItem(KEY_STORAGE) ?? process.env.NEXT_PUBLIC_ASKSAGE_API_KEY ?? '',
+  }
+}
+
+export function setStoredCredentials(email: string, apiKey: string): void {
   if (typeof window === 'undefined') return
-  if (key.trim()) localStorage.setItem(STORAGE_KEY, key.trim())
-  else localStorage.removeItem(STORAGE_KEY)
+  if (email.trim()) localStorage.setItem(EMAIL_STORAGE, email.trim())
+  else localStorage.removeItem(EMAIL_STORAGE)
+  if (apiKey.trim()) localStorage.setItem(KEY_STORAGE, apiKey.trim())
+  else localStorage.removeItem(KEY_STORAGE)
+  // Credentials changed — invalidate any cached token
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_TIME_KEY)
 }
