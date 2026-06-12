@@ -22,19 +22,26 @@ function gradeScore(profile: SoldierProfile, pos: Position): number {
   const curNum    = RANK_NUM[profile.rank] ?? 0
   const targetNum = RANK_NUM[profile.targetRank] ?? 0
   if (posNum === 0) return 0
-  if (posNum === targetNum) return 35   // sweet spot
-  if (posNum === curNum)    return 25   // current grade (lateral move)
-  if (posNum === targetNum + 1) return 15  // one above target (stretch)
-  if (posNum === curNum + 1)    return 20  // one grade up (natural next step)
+  if (posNum === targetNum)     return 35  // sweet spot — target grade
+  if (posNum === curNum + 1)    return 28  // natural next step up
+  if (posNum === curNum)        return 20  // lateral — same grade
+  if (posNum === targetNum + 1) return 12  // one above target — real stretch
+  // Promotable soldiers can compete for one grade higher
+  if (profile.isPromotable && posNum === curNum + 1) return 28
   return 0
 }
 
 function mosScore(profile: SoldierProfile, pos: Position): number {
+  // "00x" MOS codes = open to multiple MOS within career category — partial credit
+  if (!pos.mos || pos.mos.startsWith('00')) return 15
   if (pos.mos === profile.mos || pos.mos === profile.secondaryMos) return 30
   if (profile.wantToSwitchMos === 'Yes' && pos.mos === profile.targetMos) return 25
   if (profile.wantToSwitchMos !== 'No') return 8
-  // Related MOS check (same first two digits = related career field)
-  if (pos.mos.slice(0, 2) === profile.mos.slice(0, 2)) return 12
+  // Related MOS: same first two digits = related career field
+  if (pos.mos.slice(0, 2) === profile.mos.slice(0, 2)) return 15
+  // Infantry cross-match: 11A/11B/11C are all Infantry branch
+  const INF_MOS = new Set(['11A', '11B', '11C', '11Z'])
+  if (INF_MOS.has(pos.mos) && INF_MOS.has(profile.mos)) return 20
   return 0
 }
 
@@ -92,12 +99,15 @@ function matchLabel(score: number): MatchLabel {
 
 export function scorePosition(profile: SoldierProfile, pos: Position): ScoredPosition {
   const commute = getCommute(profile.homeCity, pos.city)
-  const gs = gradeScore(profile, pos)
-  const ms = mosScore(profile, pos)
-  const cs = commuteScore(profile, pos)
+  const gs  = gradeScore(profile, pos)
+  const ms  = mosScore(profile, pos)
+  const cs  = commuteScore(profile, pos)
   const gls = goalScore(profile, pos)
-  const ss = statusScore(profile, pos)
-  const total = gs + ms + cs + gls + ss
+  const ss  = statusScore(profile, pos)
+  // Vacant positions are immediately actionable — small bonus
+  const vacancyBonus = pos.vacancyStatus === 'Vacant' ? 5 : 0
+  const raw = gs + ms + cs + gls + ss + vacancyBonus
+  const total = Math.min(100, raw)
   return {
     ...pos,
     gradeScore:    gs,

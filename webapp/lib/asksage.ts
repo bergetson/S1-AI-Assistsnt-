@@ -3,8 +3,8 @@ import type { SoldierProfile, ScoredPosition } from './types'
 const YEAR = new Date().getFullYear()
 
 export function buildSystemPrompt(profile: SoldierProfile, topMatches: ScoredPosition[]): string {
-  const matchSummary = topMatches.slice(0, 8).map(p =>
-    `  - ${p.grade} ${p.dutyTitle} @ ${p.unit}, ${p.city} | Score: ${p.totalScore}/100 | ${p.matchLabel} | ${p.commuteMins >= 0 ? p.commuteMins + ' min drive' : 'commute unknown'} | ${p.vacancyStatus}`
+  const matchSummary = topMatches.slice(0, 10).map(p =>
+    `  - ${p.grade} ${p.dutyTitle} @ ${p.unit}, ${p.city} | ${p.totalScore}/100 | ${p.matchLabel} | ${p.commuteMins >= 0 ? p.commuteMins + ' min drive' : 'commute unknown'} | ${p.vacancyStatus}${p.isCommandOrKD ? ' | KD Position' : ''}`
   ).join('\n')
 
   const pmeEnlisted = `BLC=${profile.blcComplete?'✓':'✗'} ALC=${profile.alcComplete?'✓':'✗'} SLC=${profile.slcComplete?'✓':'✗'} SMC=${profile.smcComplete?'✓':'✗'}`
