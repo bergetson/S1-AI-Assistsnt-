@@ -95,7 +95,7 @@ const FEATURES = [
     href: '/matches',
     icon: '🎯',
     title: 'Position Matches',
-    desc: '532 real MTARNG positions scored 0–100 against your profile — only positions you are eligible for. Filter by city, grade, and status.',
+    desc: '593 real MTARNG positions scored 0–100 against your profile — only positions you are eligible for. Filter by city, grade, and status.',
     bg: 'from-emerald-700 to-emerald-900',
     badge: null,
   },
@@ -154,7 +154,7 @@ const HOW_IT_WORKS = [
 
 /* ── STATS ───────────────────────────────────────────────────────────────── */
 const STATS = [
-  { value: '532', label: 'Real MTARNG Positions' },
+  { value: '593', label: 'Real MTARNG Positions' },
   { value: '5', label: 'Montana Duty Stations' },
   { value: '0–100', label: 'Fit Score on Every Position' },
   { value: 'AI', label: 'Career Mentor Built In' },
