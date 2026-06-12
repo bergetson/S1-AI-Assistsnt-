@@ -47,7 +47,7 @@ const FEATURES = [
     href: '/matches',
     icon: '🎯',
     title: 'Position Matches',
-    desc: 'MTARNG positions scored 0–100 against your profile — only positions you are eligible for. Filter by city, grade, and status.',
+    desc: '1,184 real MTARNG positions — 625 currently vacant — scored 0–100 against your profile. Filter by city, grade, status, and vacancy.',
     bg: 'from-emerald-700 to-emerald-900',
     badge: null,
   },
@@ -106,6 +106,8 @@ const HOW_IT_WORKS = [
 
 /* ── STATS ───────────────────────────────────────────────────────────────── */
 const STATS = [
+  { value: '1,184', label: 'Real MTARNG Positions' },
+  { value: '625', label: 'Positions Currently Vacant' },
   { value: '0–100', label: 'Fit Score on Every Position' },
   { value: 'AI', label: 'Career Mentor Built In' },
 ]
