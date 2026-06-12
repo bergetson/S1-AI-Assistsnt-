@@ -113,18 +113,19 @@ export default function AiMentorPage() {
   if (!profileComplete) {
     return (
       <div className="max-w-2xl mx-auto mt-20 text-center px-4">
-        <div className="text-6xl mb-4">🎖️</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-3">Complete Your Profile First</h2>
-        <p className="text-gray-600 mb-6">
-          The AI Mentor needs your career profile to give you specific, relevant advice.
-          It takes about 5 minutes.
+        <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-extrabold text-green-950 shadow-xl mx-auto mb-5"
+          style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)' }}>S</div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-3">Steeves needs to know you first</h2>
+        <p className="text-gray-600 mb-6 leading-relaxed">
+          Complete your Soldier profile so Steeves can give you specific, relevant career advice
+          based on your rank, MOS, home city, and goals. Takes about 5 minutes.
         </p>
         <Link
           href="/profile"
-          className="inline-block px-6 py-3 rounded-lg text-white font-semibold"
+          className="inline-block px-6 py-3 rounded-lg text-white font-semibold shadow"
           style={{ backgroundColor: '#1B4F2A' }}
         >
-          Go to My Profile →
+          Build My Profile →
         </Link>
       </div>
     )
@@ -207,8 +208,12 @@ export default function AiMentorPage() {
         {/* Chat header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
           <div>
-            <h1 className="font-bold text-gray-800">AI Career Mentor</h1>
-            <p className="text-xs text-gray-500">Powered by Claude · Context-aware advice based on your profile</p>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-green-950"
+                style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)' }}>S</div>
+              <h1 className="font-bold text-gray-800">Ask Steeves</h1>
+            </div>
+            <p className="text-xs text-gray-500 ml-9">Your S1 Career Manager · Powered by Claude · Context-aware advice based on your profile</p>
           </div>
           {messages.length > 0 && (
             <button
@@ -224,12 +229,12 @@ export default function AiMentorPage() {
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-16">
-              <div className="text-5xl mb-4">🎖️</div>
-              <h2 className="text-xl font-bold text-gray-700 mb-2">Your AI Career Mentor</h2>
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-extrabold text-green-950 shadow-lg mx-auto mb-4"
+                style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)' }}>S</div>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">Ask Steeves anything</h2>
               <p className="text-gray-500 max-w-md mx-auto text-sm">
-                Ask anything about your career path, positions, schools, MOS switches,
-                promotion timelines, or AGR opportunities. I know your full profile and
-                the MTARNG position landscape.
+                I know your full profile, your top matched positions, and the MTARNG force structure.
+                Ask me about promotions, MOS switches, schools, AGR pipelines, or your 5-year plan.
               </p>
               <p className="text-xs text-gray-400 mt-4">
                 Click a prompt on the left or type your question below.
@@ -240,9 +245,9 @@ export default function AiMentorPage() {
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
-                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5"
-                  style={{ backgroundColor: '#1B4F2A' }}>
-                  AI
+                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-extrabold mr-2 mt-0.5"
+                  style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)', color: '#0D2614' }}>
+                  S
                 </div>
               )}
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
@@ -261,7 +266,7 @@ export default function AiMentorPage() {
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
               <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mr-2"
-                style={{ backgroundColor: '#1B4F2A' }}>AI</div>
+                style={{ background: 'linear-gradient(135deg, #C8A96E, #e0c080)', color: '#0D2614' }}>S</div>
               <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                 <div className="flex gap-1">
                   <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MT ARNG Career Planner | Montana Army National Guard',
-  description: 'Montana Army National Guard Career Planning & Mentorship System',
+  title: 'Ask Steeves | Your S1 Career Manager — Montana Army National Guard',
+  description:
+    'Ask Steeves is your AI-powered S1 Career Manager for the Montana Army National Guard. Personalized career advice, position matches, commute analysis, and a printable counseling sheet.',
 };
 
 export default function RootLayout({

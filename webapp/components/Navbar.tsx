@@ -11,7 +11,7 @@ const navLinks = [
   { label: 'Commute', href: '/commute' },
   { label: 'Timeline', href: '/timeline' },
   { label: 'Counseling', href: '/counseling' },
-  { label: 'AI Mentor', href: '/ai-mentor' },
+  { label: 'Ask Steeves', href: '/ai-mentor' },
 ];
 
 export default function Navbar() {
@@ -26,12 +26,25 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo / Brand */}
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl" aria-hidden="true">🛡️</span>
-            <span className="text-white font-bold text-lg leading-tight">
-              MT ARNG Career Planner
-            </span>
-          </div>
+          <Link href="/" className="flex items-center space-x-3 group">
+            {/* Shield badge */}
+            <div className="relative flex-shrink-0">
+              <svg width="34" height="38" viewBox="0 0 34 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17 1L2 7V20C2 28.5 8.5 35.5 17 37C25.5 35.5 32 28.5 32 20V7L17 1Z"
+                  fill="#C8A96E" stroke="#A07840" strokeWidth="1.5"/>
+                <text x="17" y="24" textAnchor="middle" fill="#1B4F2A"
+                  fontSize="14" fontWeight="bold" fontFamily="serif">S</text>
+              </svg>
+            </div>
+            <div className="leading-tight">
+              <div className="text-white font-bold text-lg tracking-tight group-hover:text-amber-200 transition-colors">
+                Ask Steeves
+              </div>
+              <div className="text-green-300 text-xs font-medium tracking-wider uppercase">
+                S1 Career Manager · MT ARNG
+              </div>
+            </div>
+          </Link>
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center space-x-1">
