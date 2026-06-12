@@ -47,7 +47,7 @@ const FEATURES = [
     href: '/matches',
     icon: '🎯',
     title: 'Position Matches',
-    desc: 'Every MTARNG position scored 0–100 against your profile. Filter, sort, and find your next move.',
+    desc: 'MTARNG positions scored 0–100 against your profile — only positions you are eligible for. Filter by city, grade, and status.',
     bg: 'from-emerald-700 to-emerald-900',
     badge: null,
   },
@@ -106,8 +106,6 @@ const HOW_IT_WORKS = [
 
 /* ── STATS ───────────────────────────────────────────────────────────────── */
 const STATS = [
-  { value: '82', label: 'MTARNG Positions Tracked' },
-  { value: '18', label: 'Montana Cities Covered' },
   { value: '0–100', label: 'Fit Score on Every Position' },
   { value: 'AI', label: 'Career Mentor Built In' },
 ]
