@@ -125,7 +125,7 @@ export default function CounselingPage() {
                 ['Years of Service', String(profile.yearsOfService)],
                 ['Time in Grade', `${profile.timeInGrade} yrs`],
                 ['Security Clearance', profile.clearanceLevel],
-                ['Fitness Status', profile.fitessStatus],
+                ['Fitness Status', profile.fitnessStatus],
                 ['ETS', profile.ets],
               ].map(([label, val]) => (
                 <div key={label} className="border border-gray-200 rounded px-2 py-1">

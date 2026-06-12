@@ -386,6 +386,46 @@ function getDecisionGates(profile: {
   ]
 }
 
+function get20YearMilestones(profile: {
+  careerCategory: CareerCategory
+  rank: string
+  yearsOfService: number
+  targetRank: string
+  targetTimeline: number
+  preferredStatus: string
+}): Array<{ year: number; label: string; detail: string; type: 'pme'|'promotion'|'agr'|'milestone' }> {
+  const { yearsOfService, targetTimeline, careerCategory } = profile
+  const baseYear = new Date().getFullYear()
+  const milestones: Array<{ year: number; label: string; detail: string; type: 'pme'|'promotion'|'agr'|'milestone' }> = []
+
+  // 20-year retirement target
+  const retirementYear = baseYear + Math.max(0, 20 - yearsOfService)
+  milestones.push({ year: retirementYear, label: '20-Year Retirement Eligible', detail: 'Active duty or ARNG retirement with monthly retired pay', type: 'milestone' })
+
+  // Target rank
+  if (targetTimeline > 0) {
+    milestones.push({ year: baseYear + targetTimeline, label: `Target: ${profile.targetRank}`, detail: 'Goal rank based on your stated timeline', type: 'promotion' })
+  }
+
+  // Category-specific milestones
+  if (careerCategory === 'Enlisted') {
+    if (yearsOfService < 6) milestones.push({ year: baseYear + Math.max(0, 3 - yearsOfService), label: 'E5 Promotion Window', detail: 'Typical TIS 3-6 years. BLC required.', type: 'promotion' })
+    if (yearsOfService < 10) milestones.push({ year: baseYear + Math.max(1, 6 - yearsOfService), label: 'E6 Promotion Window', detail: 'Typical TIS 6-10 years. ALC required.', type: 'promotion' })
+    if (yearsOfService < 16) milestones.push({ year: baseYear + Math.max(2, 10 - yearsOfService), label: 'E7 Promotion Window', detail: 'Competitive. SLC required.', type: 'promotion' })
+    milestones.push({ year: baseYear + 2, label: 'AGR Application Window', detail: 'Research open AGR billets at HRO. Competition is fierce — apply early.', type: 'agr' })
+  } else if (careerCategory === 'Officer') {
+    milestones.push({ year: baseYear + 1, label: 'Company Command Opportunity', detail: 'CPT command is a career-defining KD assignment. Compete aggressively.', type: 'milestone' })
+    milestones.push({ year: baseYear + 4, label: 'MAJ Promotion / ILE', detail: 'ILE completion required for LTC. Plan attendance now.', type: 'pme' })
+    milestones.push({ year: baseYear + 2, label: 'AGR/Technician Consideration', detail: 'Full-time positions as O3/O4 open regularly in MTARNG HQ.', type: 'agr' })
+  } else {
+    milestones.push({ year: baseYear + 1, label: 'WOAC Completion Target', detail: 'Required for CW3 promotion. Schedule through HRC.', type: 'pme' })
+    milestones.push({ year: baseYear + 3, label: 'CW3 Promotion Window', detail: 'Technical expertise and WOAC completion are key factors.', type: 'promotion' })
+    milestones.push({ year: baseYear + 2, label: 'AGR/Technician Opportunity', detail: 'Warrant AGR positions exist in aviation, intel, and cyber MOSs.', type: 'agr' })
+  }
+
+  return milestones.sort((a, b) => a.year - b.year)
+}
+
 // ── Page component ────────────────────────────────────────────────────────────
 export default function TimelinePage() {
   const { profile } = useProfileStore()
@@ -395,6 +435,7 @@ export default function TimelinePage() {
   const phases = getPhasesForCategory(activeTab)
   const currentPhaseIndex = getCurrentPhaseIndex(profile.rank, activeTab)
   const decisionGates = getDecisionGates(profile)
+  const milestones20yr = get20YearMilestones(profile)
 
   const tabs: CareerCategory[] = ['Enlisted', 'Officer', 'Warrant']
 
@@ -568,6 +609,45 @@ export default function TimelinePage() {
             </li>
           ))}
         </ol>
+      </div>
+
+      {/* F. 20-Year Career Projection */}
+      <div className="mx-8 mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+        <p className="font-bold text-gray-900 mb-1 text-base">
+          20-Year Career Projection
+        </p>
+        <p className="text-xs text-gray-500 mb-4">
+          Based on {profile.yearsOfService} years of service · 20-yr eligible ~{new Date().getFullYear() + Math.max(0, 20 - profile.yearsOfService)}
+        </p>
+        <div className="relative">
+          {/* Timeline line */}
+          <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-200" />
+          <div className="space-y-4">
+            {milestones20yr.map((m, i) => {
+              const colors = {
+                pme: { dot: 'bg-purple-500', badge: 'bg-purple-100 text-purple-800' },
+                promotion: { dot: 'bg-green-500', badge: 'bg-green-100 text-green-800' },
+                agr: { dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800' },
+                milestone: { dot: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800' },
+              }[m.type]
+              return (
+                <div key={i} className="flex gap-4 items-start pl-8 relative">
+                  <div className={`absolute left-1.5 w-3 h-3 rounded-full ${colors.dot} ring-2 ring-white mt-0.5`} />
+                  <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-800 text-sm">{m.year}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors.badge}`}>
+                        {m.type === 'pme' ? 'PME' : m.type === 'promotion' ? 'Promotion' : m.type === 'agr' ? 'AGR' : 'Milestone'}
+                      </span>
+                      <span className="font-semibold text-sm text-gray-700">{m.label}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{m.detail}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )

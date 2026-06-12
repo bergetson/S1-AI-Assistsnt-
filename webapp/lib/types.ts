@@ -40,7 +40,6 @@ export interface SoldierProfile {
   componentStatus: ComponentStatus
   // Assignment
   unitName: string
-  uic: string
   dutyTitle: string
   unitCity: string
   homeCity: string
@@ -90,7 +89,7 @@ export interface SoldierProfile {
   hasKdPosition: boolean
   isPromotable: boolean
   onPromotionList: boolean
-  fitessStatus: string
+  fitnessStatus: string
   clearanceLevel: string
   deployments: string
   awards: string
@@ -109,7 +108,6 @@ export const defaultProfile: SoldierProfile = {
   branch: 'LG',
   componentStatus: 'M-Day',
   unitName: '495th CSSC',
-  uic: 'W4MMMS',
   dutyTitle: 'Unit Supply Specialist',
   unitCity: 'Missoula',
   homeCity: 'Missoula',
@@ -152,7 +150,7 @@ export const defaultProfile: SoldierProfile = {
   hasKdPosition: false,
   isPromotable: false,
   onPromotionList: false,
-  fitessStatus: 'Passing',
+  fitnessStatus: 'Passing',
   clearanceLevel: 'Secret',
   deployments: '1 deployment (Afghanistan 2021)',
   awards: 'Army Achievement Medal x2, Army Commendation Medal',
@@ -166,7 +164,7 @@ export const defaultProfile: SoldierProfile = {
 export interface Position {
   id: number
   unit: string
-  uic: string
+  uic?: string
   city: string
   dutyTitle: string
   grade: string

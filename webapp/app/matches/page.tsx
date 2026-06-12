@@ -44,6 +44,7 @@ export default function MatchesPage() {
   const [filterLabel, setFilterLabel] = useState('')
   const [filterVacancy, setFilterVacancy] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
   const [sortBy, setSortBy] = useState('score')
 
   const cities = useMemo(() => [...new Set(positions.map(p => p.city))].sort(), [])
@@ -54,11 +55,12 @@ export default function MatchesPage() {
     if (filterLabel) list = list.filter(p => p.matchLabel === filterLabel)
     if (filterVacancy === 'Vacant & Projected Only') list = list.filter(p => p.vacancyStatus !== 'Filled')
     if (filterCategory) list = list.filter(p => p.careerCategory === filterCategory)
+    if (filterStatus) list = list.filter(p => p.statusType === filterStatus || p.statusType === 'Multiple')
     if (sortBy === 'city') list.sort((a, b) => a.city.localeCompare(b.city))
     else if (sortBy === 'grade') list.sort((a, b) => a.grade.localeCompare(b.grade))
     // score sort is already default from scoreAllPositions
     return list
-  }, [scored, filterCity, filterLabel, filterVacancy, filterCategory, sortBy])
+  }, [scored, filterCity, filterLabel, filterVacancy, filterCategory, filterStatus, sortBy])
 
   const strongMatches = scored.filter(p => p.matchLabel === 'STRONG MATCH').length
   const goodMatches = scored.filter(p => p.matchLabel === 'GOOD MATCH').length
@@ -69,6 +71,7 @@ export default function MatchesPage() {
     setFilterLabel('')
     setFilterVacancy('')
     setFilterCategory('')
+    setFilterStatus('')
     setSortBy('score')
   }
 
@@ -194,6 +197,21 @@ export default function MatchesPage() {
               <option value="Enlisted">Enlisted</option>
               <option value="Officer">Officer</option>
               <option value="Warrant">Warrant</option>
+            </select>
+          </div>
+
+          {/* Status type filter */}
+          <div className="flex flex-col">
+            <label className={labelClass}>Status Type</label>
+            <select
+              className={selectClass}
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="AGR">AGR Only</option>
+              <option value="M-Day">M-Day Only</option>
+              <option value="Technician">Technician Only</option>
             </select>
           </div>
 
