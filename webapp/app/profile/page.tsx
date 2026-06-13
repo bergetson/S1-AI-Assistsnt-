@@ -534,31 +534,47 @@ export default function ProfilePage() {
           </div>
         </Section>
 
-        {/* Promotion readiness card */}
-        {promoReadiness && boardAlert && (
+        {/* Promotion readiness card — always shown when profile has rank/target */}
+        {promoReadiness.targetGrade && (
           <div className={`mb-4 rounded-xl border p-4 ${
-            boardAlert.urgencyLevel === 'critical' ? 'bg-red-50 border-red-200' :
-            boardAlert.urgencyLevel === 'warning'  ? 'bg-amber-50 border-amber-200' :
-                                                      'bg-blue-50 border-blue-200'
+            boardAlert?.urgencyLevel === 'critical' ? 'bg-red-50 border-red-200' :
+            boardAlert?.urgencyLevel === 'warning'  ? 'bg-amber-50 border-amber-200' :
+                                                       'bg-blue-50 border-blue-200'
           }`}>
             <div className="flex items-start gap-3">
               <span className="text-xl">
-                {boardAlert.urgencyLevel === 'critical' ? '🚨' : boardAlert.urgencyLevel === 'warning' ? '⚠️' : '📋'}
+                {boardAlert?.urgencyLevel === 'critical' ? '🚨' : boardAlert?.urgencyLevel === 'warning' ? '⚠️' : '📋'}
               </span>
               <div className="flex-1">
                 <div className={`font-semibold text-sm mb-1 ${
-                  boardAlert.urgencyLevel === 'critical' ? 'text-red-800' :
-                  boardAlert.urgencyLevel === 'warning'  ? 'text-amber-800' : 'text-blue-800'
+                  boardAlert?.urgencyLevel === 'critical' ? 'text-red-800' :
+                  boardAlert?.urgencyLevel === 'warning'  ? 'text-amber-800' : 'text-blue-800'
                 }`}>
-                  Board Readiness: {promoReadiness.label} ({Math.round(promoReadiness.readiness * 100)}%)
+                  Readiness for {promoReadiness.targetGrade}: {promoReadiness.label} ({Math.round(promoReadiness.readiness * 100)}%)
                 </div>
-                <div className="text-xs text-gray-600 mb-2">{boardAlert.message}</div>
-                {boardAlert.actions.length > 0 && (
-                  <ul className="space-y-0.5">
-                    {boardAlert.actions.map((a, i) => (
-                      <li key={i} className="text-xs text-gray-700">→ {a}</li>
-                    ))}
-                  </ul>
+                {boardAlert ? (
+                  <>
+                    <div className="text-xs text-gray-600 mb-2">{boardAlert.message}</div>
+                    {boardAlert.actions.length > 0 && (
+                      <ul className="space-y-0.5">
+                        {boardAlert.actions.map((a, i) => (
+                          <li key={i} className="text-xs text-gray-700">→ {a}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {promoReadiness.blockers.length > 0 ? (
+                      <ul className="space-y-0.5">
+                        {promoReadiness.blockers.map((b, i) => (
+                          <li key={i} className="text-xs text-gray-700">→ {b}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-xs text-gray-600">No major blockers detected for {promoReadiness.targetGrade}. Keep building your record.</div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
