@@ -31,53 +31,56 @@ export interface PromotionGate {
 }
 
 export const PROMOTION_GATES: Record<string, PromotionGate> = {
-  // Enlisted — NGR 600-200, AR 600-8-19
-  E5: { minTig: 0.67, typicalTig: 1.5, minTis: 3,
-        pmeRequired: ['blcComplete'], pmeAdvisory: ['ssd1Complete'],
-        notes: 'BLC required before/within 1 year of E5 promotion; board-based below zone possible.' },
-  E6: { minTig: 1,    typicalTig: 4,   minTis: 6,
-        pmeRequired: ['alcComplete'], pmeAdvisory: ['blcComplete'],
-        notes: 'ALC must be complete before E6 promotion board eligibility in ARNG.' },
-  E7: { minTig: 2,    typicalTig: 6,   minTis: 13,
-        pmeRequired: ['slcComplete'], pmeAdvisory: ['alcComplete'],
-        notes: 'SLC must be complete before E7 consideration. Very competitive centralized board.' },
+  // Enlisted — AR 600-8-19 (Oct 2023), NGR 600-200
+  // NOTE: PPOM 24-014 (Jun 2024) suspended BLC/ALC/SLC/MLC as hard promotion gates
+  // for SGT through MSG. PME is still strongly recommended and a board discriminator
+  // but no longer blocks promotion. SMC is still required for E9.
+  E5: { minTig: 0.5,  typicalTig: 2,   minTis: 3,
+        pmeRequired: [], pmeAdvisory: ['blcComplete', 'ssd1Complete'],
+        notes: 'SGT: board PZ at 6mo TIG / 34mo TIS; pin-on at 8mo TIG / 36mo TIS. BLC is a board discriminator but no longer a hard gate (PPOM 24-014, Jun 2024).' },
+  E6: { minTig: 0.67, typicalTig: 5,   minTis: 7,
+        pmeRequired: [], pmeAdvisory: ['blcComplete', 'alcComplete'],
+        notes: 'SSG: board PZ at 8mo TIG / 82mo TIS (~6.8 yr); pin-on at 10mo TIG / 84mo TIS (~7 yr). ALC no longer a hard gate (PPOM 24-014). ARNG vacancy constraints often delay to 8-12yr TIS.' },
+  E7: { minTig: 3,    typicalTig: 7,   minTis: 13,
+        pmeRequired: [], pmeAdvisory: ['slcComplete', 'alcComplete'],
+        notes: 'SFC: min 3yr TIG as SSG. Centralized DA/NGB board. No points — board reviews entire record. SLC no longer hard gate but still a key discriminator. Very competitive.' },
   E8: { minTig: 3,    typicalTig: 8,   minTis: 18,
-        pmeRequired: ['slcComplete'], pmeAdvisory: [],
-        notes: 'Centralized DA selection board. Competitive. SLC required.' },
+        pmeRequired: [], pmeAdvisory: ['slcComplete'],
+        notes: 'MSG: min 3yr TIG as SFC. Centralized selection. Typical ARNG: 18-22yr TIS. MLC no longer hard gate (PPOM 24-014).' },
   E9: { minTig: 3,    typicalTig: 10,  minTis: 22,
         pmeRequired: ['smcComplete'], pmeAdvisory: [],
-        notes: 'SGM/CSM: SGM-E (SMC) required for E9. Extremely competitive. <5% selection.' },
+        notes: 'SGM/CSM: SMC (10-month resident at Fort Bliss) still required — not suspended. Ineligible soldiers screened from board. <5% selection. Typical: 22-28yr TIS.' },
 
-  // Officers — DA Pam 600-3, NGB guidance
+  // Officers — AR 135-155, 10 USC Ch. 1405, NGB PPOM 24-003
   O2: { minTig: 1.5,  typicalTig: 1.5, minTis: 1.5,
         pmeRequired: ['bolcComplete'], pmeAdvisory: [],
-        notes: 'O1→O2 is time-based at 18 months. Essentially automatic if meeting standards.' },
-  O3: { minTig: 2,    typicalTig: 3,   minTis: 4,
+        notes: '1LT: time-based at 18 months (10 USC 14303). Essentially automatic. BOLC blocks promotion if not complete within 24 months of commissioning.' },
+  O3: { minTig: 2,    typicalTig: 2.5, minTis: 4,
         pmeRequired: ['bolcComplete'], pmeAdvisory: [],
-        notes: 'O2→O3 (CPT) at ~3-4 years. BOLC required. High selection rate.' },
+        notes: 'CPT: min 24 months TIG as 1LT (10 USC 14306). Not competitive. BOLC required.' },
   O4: { minTig: 3,    typicalTig: 5,   minTis: 10,
-        pmeRequired: ['cccComplete'], pmeAdvisory: [],
-        notes: 'CPT→MAJ: CCC required before board. Minimum 3yr TIG as CPT; typical 4-6yr. ~80% selection rate in ARNG.' },
+        pmeRequired: [], pmeAdvisory: ['cccComplete'],
+        notes: 'MAJ: min 3yr TIG as CPT; primary zone 4-5yr TIG. ~80% ARNG selection. CCC is NOT required for MAJ board (board discriminator only); CCC IS required before LTC (ILE prerequisite). Vacancy delays in ARNG can mean 6-8yr TIG.' },
   O5: { minTig: 3,    typicalTig: 6,   minTis: 16,
-        pmeRequired: ['ileComplete'], pmeAdvisory: ['cccComplete'],
-        notes: 'MAJ→LTC: ILE (CGSC) required. ~70% selection. Command time valued heavily.' },
+        pmeRequired: ['ileComplete', 'cccComplete'], pmeAdvisory: [],
+        notes: 'LTC: ILE (CGSC or equivalent) required. CCC must be complete before ILE enrollment. ~70% selection. Command time as MAJ heavily valued.' },
   O6: { minTig: 3,    typicalTig: 7,   minTis: 22,
-        pmeRequired: ['ileComplete'], pmeAdvisory: [],
-        notes: 'LTC→COL: Very competitive. ILE required, SSC/SSP credit valued.' },
+        pmeRequired: ['ileComplete'], pmeAdvisory: ['sscComplete'],
+        notes: 'COL: very competitive. ILE required. SSC/SSP credit valued for senior positions.' },
 
-  // Warrant Officers — AR 600-8-29
-  W2: { minTig: 2,    typicalTig: 2,   minTis: 6,
+  // Warrant Officers — NGR 600-101 Table 7-1, AR 135-155
+  W2: { minTig: 2,    typicalTig: 2,   minTis: 4,
         pmeRequired: ['wobcComplete'], pmeAdvisory: [],
-        notes: 'WO1 is temporary grade. WOBC required. Promoted to CW2 at 2yr min TIG.' },
-  W3: { minTig: 5,    typicalTig: 5,   minTis: 8,
+        notes: 'CW2: WO1 is temporary grade (FEDREC terminates at 1yr without WOBC). WOBC required for permanent FEDREC. CW2 promotion after min 2yr TIG as WO1.' },
+  W3: { minTig: 4,    typicalTig: 5,   minTis: 8,
         pmeRequired: ['woacComplete'], pmeAdvisory: ['wobcComplete'],
-        notes: 'CW2→CW3: WOAC required. Minimum 5yr TIG as CW2. DA selection board.' },
-  W4: { minTig: 3,    typicalTig: 5,   minTis: 13,
-        pmeRequired: ['woacComplete'], pmeAdvisory: [],
-        notes: 'CW3→CW4: WOILE required for some specialties. DA board. Competitive.' },
-  W5: { minTig: 3,    typicalTig: 7,   minTis: 20,
+        notes: 'CW3: min 4yr TIG as CW2 (NGR 600-101 Table 7-1); 5yr if not in higher-grade position. WOAC required. DA selection board.' },
+  W4: { minTig: 5,    typicalTig: 6,   minTis: 13,
+        pmeRequired: ['woacComplete'], pmeAdvisory: ['woileComplete'],
+        notes: 'CW4: min 5yr TIG as CW3 (NGR 600-101). WOILE required for some specialties. DA board. Competitive.' },
+  W5: { minTig: 4.5,  typicalTig: 6,   minTis: 20,
         pmeRequired: [], pmeAdvisory: [],
-        notes: 'CW4→CW5: Extremely limited authorizations. Requires SGM-equivalent billet.' },
+        notes: 'CW5: min ~54 months (~4.5yr) TIG as CW4. Extremely limited authorizations. Most WOs retire at CW3 or CW4.' },
 }
 
 // Assess how promotion-ready a soldier is for a given target grade (0.0–1.0).
