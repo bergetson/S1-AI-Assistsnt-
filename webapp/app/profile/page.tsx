@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { MT_CITIES } from '@/lib/data/cities'
+import { getBoardAlert, getPromotionReadiness } from '@/lib/scoring'
 import type { CareerCategory, ComponentStatus, PositionType, CommuteLimit, PrimaryGoal } from '@/lib/types'
 
 const ARMY_GREEN = '#1B4F2A'
@@ -72,6 +73,9 @@ export default function ProfilePage() {
   const [s2, setS2] = useState(false)
   const [s3, setS3] = useState(false)
   const [s4, setS4] = useState(false)
+
+  const boardAlert = useMemo(() => getBoardAlert(profile), [profile])
+  const promoReadiness = useMemo(() => getPromotionReadiness(profile), [profile])
 
   // Count filled required fields for completion %
   const required = [profile.fullName, profile.rank, profile.mos, profile.homeCity, profile.componentStatus]
@@ -529,6 +533,37 @@ export default function ProfilePage() {
 
           </div>
         </Section>
+
+        {/* Promotion readiness card */}
+        {promoReadiness && boardAlert && (
+          <div className={`mb-4 rounded-xl border p-4 ${
+            boardAlert.urgencyLevel === 'critical' ? 'bg-red-50 border-red-200' :
+            boardAlert.urgencyLevel === 'warning'  ? 'bg-amber-50 border-amber-200' :
+                                                      'bg-blue-50 border-blue-200'
+          }`}>
+            <div className="flex items-start gap-3">
+              <span className="text-xl">
+                {boardAlert.urgencyLevel === 'critical' ? '🚨' : boardAlert.urgencyLevel === 'warning' ? '⚠️' : '📋'}
+              </span>
+              <div className="flex-1">
+                <div className={`font-semibold text-sm mb-1 ${
+                  boardAlert.urgencyLevel === 'critical' ? 'text-red-800' :
+                  boardAlert.urgencyLevel === 'warning'  ? 'text-amber-800' : 'text-blue-800'
+                }`}>
+                  Board Readiness: {promoReadiness.label} ({Math.round(promoReadiness.readiness * 100)}%)
+                </div>
+                <div className="text-xs text-gray-600 mb-2">{boardAlert.message}</div>
+                {boardAlert.actions.length > 0 && (
+                  <ul className="space-y-0.5">
+                    {boardAlert.actions.map((a, i) => (
+                      <li key={i} className="text-xs text-gray-700">→ {a}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bottom bar */}
         <div className="flex items-center justify-end gap-3 pt-2">

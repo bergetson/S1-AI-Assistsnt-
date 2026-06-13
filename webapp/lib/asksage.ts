@@ -1,5 +1,5 @@
 import type { SoldierProfile, ScoredPosition } from './types'
-import { PROMOTION_GATES, getPromotionReadiness } from './scoring'
+import { PROMOTION_GATES, getPromotionReadiness, getBoardAlert } from './scoring'
 
 const YEAR = new Date().getFullYear()
 
@@ -60,74 +60,112 @@ Clearance: ${profile.clearanceLevel} | Deployments: ${profile.deployments}
 == PROMOTION READINESS ASSESSMENT ==
 ${promoContext || '(Unable to assess — complete your profile)'}
 
+== UPCOMING BOARD ALERT ==
+${(() => {
+  const alert = getBoardAlert(profile)
+  if (!alert) return '(No centralized board data for this grade)'
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  return `${alert.boardName} | Est. convene: ${fmt(alert.conveneDate)} (~${alert.monthsAway} months) | Records cutoff: ~${fmt(alert.cutoffDate)}
+  Urgency: ${alert.urgencyLevel.toUpperCase()}
+  ${alert.actions.length ? 'Required actions: ' + alert.actions.join('; ') : 'No outstanding actions identified.'}`
+})()}
+
 == TOP MATCHED POSITIONS ==
 ${matchSummary || '(Profile not complete enough to score positions)'}
 
-== ARMY NATIONAL GUARD PROMOTION TIMELINES (AR 600-8-19 / NGR 600-200 / DA Pam 600-3) ==
-Use these when giving promotion advice. These are ARNG-specific; Active Duty timelines differ.
+== ARMY NATIONAL GUARD PROMOTION TIMELINES (AR 600-8-19 / AR 135-155 / NGR 600-101) ==
+Use these when giving promotion advice. ARNG-specific; Active Duty timelines differ.
 
-ENLISTED:
-  E4→E5 (SGT):  Earliest ~8 months TIG. BLC required before/within 1yr of promotion. Board-based.
-  E5→E6 (SSG):  Min 12 months TIG. ALC must be COMPLETE before board eligibility. Typical: 3-5yr TIG.
-  E6→E7 (SFC):  Min 24 months TIG. SLC must be COMPLETE. Very competitive centralized DA board. Typical: 5-7yr TIG.
-  E7→E8 (MSG):  Min 36 months TIG. SLC required. DA selection board. Typical: 7-10yr TIG.
-  E8→E9 (SGM/CSM): Min 36 months TIG. SGM-E (SMC) required. <5% selection. Extreme competition.
+ENLISTED — KEY POLICY: PPOM 24-014 (Jun 2024) suspended BLC/ALC/SLC/MLC as hard promotion gates for
+E5 through E8. PME is still a board record discriminator and strongly recommended, but no longer blocks
+promotion. SMC is still required for E9 (not suspended). Advise soldiers to complete PME even though
+it's not currently a hard gate, because the policy may be reinstated and boards still see incomplete PME.
 
-OFFICERS (year groups and selection rates vary annually):
-  O1→O2 (1LT):  At 18 months — time-based, essentially automatic. BOLC required within 12 months of commissioning.
-  O2→O3 (CPT):  At ~4 years TIS. BOLC required. High selection rate.
-  O3→O4 (MAJ):  CRITICAL: Min 3yr TIG as CPT; typical board zone 4-6yr TIG. CCC required before board. ~80% selection ARNG.
-                  A CPT with <3yr TIG is NOT eligible for the MAJ board.
-  O4→O5 (LTC):  Min 3yr TIG as MAJ. ILE (CGSC or equivalent) required. ~70% selection.
-  O5→O6 (COL):  Min 3yr TIG as LTC. Very competitive. ILE required; SSC valued.
+  E4→E5 (SGT):  Primary zone board at 6mo TIG / 34mo TIS; pin-on at 8mo TIG / 36mo TIS.
+                 BLC is a board discriminator. ARNG boards semi-annual (spring/fall). Vacancy-driven.
+  E5→E6 (SSG):  PZ board at 8mo TIG / 82mo TIS (~6.8yr); pin-on at 10mo TIG / 84mo TIS (~7yr).
+                 ALC recommended. ARNG vacancy constraints often delay actual pin-on to 8-12yr TIS.
+  E6→E7 (SFC):  Min 3yr TIG as SSG. Centralized NGB board. SLC a key board discriminator (not a gate).
+                 No points system — board reviews entire record. Typical ARNG: 13-17yr TIS. Very competitive.
+  E7→E8 (MSG):  Min 3yr TIG as SFC. Centralized. Typical ARNG: 18-22yr TIS.
+  E8→E9 (SGM/CSM): Min 3yr TIG as MSG. SMC (10-month resident at Fort Bliss) STILL REQUIRED.
+                    Soldiers not SMC-eligible are screened from board. <5% selection. Typical: 22-28yr TIS.
 
-WARRANT OFFICERS:
-  WO1→CW2:  WO1 is a temporary grade. WOBC required. Promoted to CW2 after minimum 2yr TIG.
-  CW2→CW3:  Min 5yr TIG as CW2. WOAC required before board. DA selection.
-  CW3→CW4:  Min 3yr TIG as CW3. WOILE required for some specialties. DA board.
-  CW4→CW5:  Min 3yr TIG. Very limited authorizations. Extremely competitive.
+OFFICERS:
+  O1→O2 (1LT):  At 18 months — time-based (10 USC 14303). Essentially automatic. BOLC must complete
+                 within 24 months of commissioning; promotion to CPT blocked without it.
+  O2→O3 (CPT):  Min 24 months TIG as 1LT (statutory, 10 USC 14306). Not competitive. BOLC required.
+  O3→O4 (MAJ):  Min 3yr TIG as CPT; primary zone 4-5yr TIG. ~80% ARNG selection.
+                 CRITICAL: CCC is NOT required for the MAJ board — it is a board discriminator only.
+                 CCC IS required before ILE enrollment (ILE is required for LTC).
+                 A CPT with <3yr TIG is NOT board-eligible. ARNG vacancy delays: often 6-8yr TIG to pin-on.
+  O4→O5 (LTC):  Min 3yr TIG as MAJ. ILE (CGSC or equivalent) required — CCC must be done first.
+                 ~70% selection. Command time as MAJ is heavily valued by boards.
+  O5→O6 (COL):  Min 3yr TIG as LTC. Very competitive (~50-60% ARNG). ILE required.
+
+WARRANT OFFICERS (NGR 600-101 Table 7-1):
+  WO1→CW2:  WO1 is temporary — FEDREC expires at 1yr without WOBC. Min 2yr TIG. WOBC required.
+  CW2→CW3:  Min 4yr TIG as CW2 (5yr if not in a higher-grade position). WOAC required. DA board.
+  CW3→CW4:  Min 5yr TIG as CW3. WOILE required for some specialties. DA board. Competitive.
+  CW4→CW5:  Min ~4.5yr TIG as CW4. Extremely limited authorizations. Most WOs retire at CW3/CW4.
 
 == COMMISSIONING & ACCESSION PROGRAMS (MTARNG) ==
 
 OCS — OFFICER CANDIDATE SCHOOL:
   State OCS (Montana-sponsored): Weekend drill format over ~18-24 months. Two summer training phases.
-    Requirements: 60+ college credits (bachelor's preferred; waiverable for prior service), ACFT passing,
-    Secret clearance eligible, age 17-35 (prior service waiver up to ~42), commission packet with medical/psych screening.
+    Requirements: Minimum 90 semester credit hours (60 per NGR 600-100, but most states require 90;
+    bachelor's degree preferred), GT score ≥110, ACFT passing, Secret clearance eligible,
+    age 18-35 at enlistment (must commission by age 42), medical/psych screening, 3 letters of recommendation.
     Process: Apply to MTARNG G1/Recruiting → State selection board → OCS phases → BOLC → Commissioned O1.
     Contact MTARNG Recruiting & Retention at Fort Harrison for current cycle dates.
+    Montana uses its RTI at Fort Harrison for state OCS phases; may also send candidates to NGB accelerated OCS.
 
-  Federal OCS (Fort Jackson, SC): 12-week program. Requires bachelor's degree. States nominate candidates.
-    For soldiers needing a faster timeline or ARNG soldiers selected for AGR officer positions.
+  Federal/Accelerated OCS (Fort Moore, GA): 8-12 weeks condensed format. Also offered in summer/winter windows.
+    Used for AGR soldiers, mobilized soldiers, or where weekend format isn't feasible.
 
-  ROTC → ARNG: ROTC cadets can request ARNG commission. Strong pipeline for college students.
+  ROTC → ARNG (Simultaneous Membership Program): ROTC cadets serve in ARNG units receiving WO2 pay.
+    Upon commissioning, receive both federal and state ARNG commission. Strong pipeline.
+
+  Green-to-Gold: ARNG soldier separates to attend ROTC full-time (18-24 months); commissioned at graduation.
+    Requirements: Age ≤30 at commissioning (waiver to ~41), 2+ academic years remaining, ACFT passing,
+    minimum E4, letter from ROTC PMS. Returns to ARNG with commission.
 
   Direct Commissioning (no OCS required):
-    Medical (MD/DO/PA/NP/RN): Enter as O3. Contact MTARNG Medical Command.
-    JAG Corps (attorney with bar admission): Enter as O2-O3.
-    Chaplain (ordained clergy + endorsing agency): Enter as O1-O2.
+    Medical (MD/DO/PA/NP/RN): Up to age 47-60 depending on specialty. Contact MTARNG Medical Command.
+    JAG Corps (attorney, bar admitted): Up to age 42 (waiver to 48). Enter as O2-O3.
+    Chaplain (clergy + ecclesiastical endorsement): Up to age 58 (waiverable). Enter as O1-O2.
+    All direct commissions still require BOLC after commissioning.
 
-WOCS — WARRANT OFFICER CANDIDATE SCHOOL (Fort Novosel, AL, ~6 weeks):
-  General requirements: Age 18-46, 2+ years military service, Secret clearance or clearable,
-  ACFT 1st class passing score, HS diploma minimum (bachelor's preferred), senior NCO chain endorsement,
-  DA photo, complete warrant officer packet.
+WOCS — WARRANT OFFICER CANDIDATE SCHOOL:
+  TWO FORMATS available for ARNG soldiers:
+  1. Resident: 5 weeks at Fort Novosel, AL. Full-time; requires orders. Most common for AGR/mobilized.
+  2. Non-Resident (RC format): ~5 months via Missouri ARNG (Ike Skelton Training Site). One weekend/month
+     for ~4 months + 15-day AT culminating block. For M-Day soldiers who cannot take 5-week orders.
+
+  General requirements: Age 18-46 (waiverable for technical WOs), 2+ years military service,
+  Secret clearance or clearable, ACFT 1st class, HS diploma minimum (bachelor's preferred for technical WOs),
+  GT score ≥110, senior NCO endorsement, DA photo, complete warrant officer packet.
 
   Aviation Warrant (153A Aviator / 153D UH-60 / 153F UH-72 / 153M AH-64 / 154F CH-47):
-    Additional: SIFT test ≥40 (study is required), Class I/IA flight physical at Fort Novosel,
-    AGE LIMIT 33 (waiver to 35 — hard limit, plan accordingly), bachelor's degree strongly preferred.
-    After WOCS: Aviation Flight School at Fort Novosel (~7 months). Most competitive WO path in MTARNG.
+    Additional: SIFT test ≥40 (competitive scores 50+; study required), Class I/IA flight physical,
+    AGE LIMIT 32 at start of flight training — NO WAIVERS typically granted. Plan around this hard date.
+    Prior enlisted MOS is NOT required (open to civilians and all MOSs). Bachelor's degree preferred.
+    After WOCS: ~1-year flight school at Fort Novosel (IERW). Most competitive WO path in MTARNG.
     189th AVN BN (Fort Harrison/Helena) is the primary MTARNG aviation unit — they sponsor packets.
 
   Technical Warrants (920A Property Accounting / 919A Maintenance / 255A IT / 890A Ammunition):
-    4+ years related MOS experience typically required. Less competitive than aviation.
-    No flight physical needed. WOBC at respective school after WOCS.
+    4-6 years related MOS experience required. Minimum E5 (some MOSs require E6).
+    Less competitive than aviation. No flight physical. Age waiver above 46 possible for technical WOs.
+    WOBC at respective school after WOCS; FEDREC permanent after WOBC.
 
-  Warrant Officer Process: Enlisted member builds packet → MTARNG warrant officer board → If selected,
-    attend WOCS → WOBC for specialty → Appointed WO1 → Must complete WOBC within 24 months → CW2 at 2yr TIG.
+  Warrant Officer Process: Build packet → MTARNG state warrant officer board → If selected, attend WOCS →
+    Temporary FEDREC as WO1 → WOBC (must complete within ~12 months or FEDREC expires) →
+    Permanent FEDREC → CW2 at 2yr TIG as WO1.
 
 == GUIDANCE ==
 Give DIRECT, SPECIFIC, ACTIONABLE advice grounded in this Soldier's actual data. Reference specific positions when relevant. Be a trusted mentor — tell the hard truth and champion their success.
 
-PROMOTION REALISM: If a soldier is behind on PME or TIG, state clearly what's needed and when they'll realistically be eligible. Never tell a CPT they're ready for MAJ slots if they have <3yr TIG. Never tell an SSG they're board-eligible without ALC complete.
+PROMOTION REALISM: If a soldier is behind on PME or TIG, state clearly what's needed and when they'll realistically be eligible. Never tell a CPT they're ready for MAJ slots if they have <3yr TIG. PME gates (BLC/ALC/SLC) are currently suspended as hard requirements (PPOM 24-014, Jun 2024) but still matter for board records — advise completing PME even without the hard gate.
 
 KD POSITIONS: For officers, command time is critical for O4+ boards. For senior NCOs, KD position (1SG, PSG, SL) matters. If the soldier lacks KD and wants to promote, push them toward KD-flagged positions in the match list.
 

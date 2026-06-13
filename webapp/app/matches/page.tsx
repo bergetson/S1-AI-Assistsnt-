@@ -3,9 +3,9 @@
 import { useState, useMemo } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
-import { scoreAllPositions, scoreAlternatePaths, matchLabelColor, matchLabelDot } from '@/lib/scoring'
+import { scoreAllPositions, scoreAlternatePaths, matchLabelColor, matchLabelDot, getBoardAlert, getPositionGaps } from '@/lib/scoring'
 import { cn } from '@/lib/utils'
-import type { ScoredPosition, MatchLabel } from '@/lib/types'
+import type { ScoredPosition, MatchLabel, BoardAlert, SoldierProfile } from '@/lib/types'
 
 const MATCH_LABELS: MatchLabel[] = [
   'STRONG MATCH',
@@ -40,6 +40,7 @@ export default function MatchesPage() {
 
   const scored = useMemo(() => scoreAllPositions(profile, positions), [profile])
   const alternatePaths = useMemo(() => scoreAlternatePaths(profile, positions), [profile])
+  const boardAlert = useMemo(() => getBoardAlert(profile), [profile])
   const [showAlternate, setShowAlternate] = useState(false)
 
   const [filterCity, setFilterCity] = useState('')
@@ -114,6 +115,11 @@ export default function MatchesPage() {
           Showing {filtered.length} of {scored.length} positions — sorted by match score
         </p>
       </div>
+
+      {/* B2. Board alert banner */}
+      {boardAlert && (
+        <BoardAlertBanner alert={boardAlert} />
+      )}
 
       {/* C. Summary stats row */}
       <div className="px-8 py-4 bg-gray-50 border-b">
@@ -238,7 +244,7 @@ export default function MatchesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filtered.map(pos => (
-              <PositionCard key={pos.id} pos={pos} />
+              <PositionCard key={pos.id} pos={pos} profile={profile} />
             ))}
           </div>
         )}
@@ -262,7 +268,7 @@ export default function MatchesPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {alternatePaths.map(pos => (
-                  <PositionCard key={pos.id} pos={pos} />
+                  <PositionCard key={pos.id} pos={pos} profile={profile} />
                 ))}
               </div>
             </div>
@@ -273,7 +279,38 @@ export default function MatchesPage() {
   )
 }
 
-function PositionCard({ pos }: { pos: ScoredPosition }) {
+function BoardAlertBanner({ alert }: { alert: BoardAlert }) {
+  const colors = {
+    critical: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', icon: '🚨' },
+    warning:  { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-800', icon: '⚠️' },
+    info:     { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800', icon: '📋' },
+  }[alert.urgencyLevel]
+
+  return (
+    <div className={cn('px-8 py-3 border-b', colors.bg, colors.border, 'border-l-4')}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="text-lg flex-shrink-0">{colors.icon}</span>
+        <div className="flex-1 min-w-0">
+          <span className={cn('font-semibold text-sm', colors.text)}>{alert.boardName} — </span>
+          <span className={cn('text-sm', colors.text)}>{alert.message}</span>
+          {alert.actions.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-2">
+              {alert.actions.map((a, i) => (
+                <span key={i} className={cn('text-xs px-2 py-0.5 rounded border', colors.bg, colors.border, colors.text)}>
+                  → {a}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PositionCard({ pos, profile }: { pos: ScoredPosition; profile: SoldierProfile }) {
+  const [showGaps, setShowGaps] = useState(false)
+  const gaps = useMemo(() => getPositionGaps(profile, pos), [profile, pos])
   return (
     <div className="bg-white rounded-xl shadow border border-gray-200 p-5 hover:shadow-md transition">
       {/* Top row */}
@@ -398,6 +435,39 @@ function PositionCard({ pos }: { pos: ScoredPosition }) {
           ⚠️ {pos.pathNote}
         </div>
       )}
+
+      {/* Gap analysis toggle */}
+      <div className="mt-3 border-t border-gray-100 pt-2">
+        <button
+          type="button"
+          onClick={() => setShowGaps(v => !v)}
+          className="text-xs text-gray-400 hover:text-gray-600 w-full text-left flex items-center gap-1"
+        >
+          <span>{showGaps ? '▲' : '▼'}</span>
+          <span>{gaps.length === 0 ? '✓ No scoring gaps' : `${gaps.length} gap${gaps.length > 1 ? 's' : ''} — why this score?`}</span>
+        </button>
+        {showGaps && (
+          <div className="mt-2 space-y-1">
+            {gaps.length === 0 ? (
+              <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                ✓ Strong alignment across grade, MOS, commute, and goal
+              </div>
+            ) : (
+              gaps.map((g, i) => {
+                const severityStyle =
+                  g.severity === 'blocking'    ? 'bg-red-50 border-red-200 text-red-800' :
+                  g.severity === 'significant' ? 'bg-orange-50 border-orange-200 text-orange-800' :
+                                                  'bg-yellow-50 border-yellow-200 text-yellow-800'
+                return (
+                  <div key={i} className={cn('text-xs border rounded px-2 py-1', severityStyle)}>
+                    <span className="font-semibold">{g.label}:</span> {g.detail}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

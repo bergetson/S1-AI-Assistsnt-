@@ -8,6 +8,8 @@ const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'My Profile', href: '/profile' },
   { label: 'Matches', href: '/matches' },
+  { label: 'Career Path', href: '/career-path' },
+  { label: 'Career Brief', href: '/career-brief' },
   { label: 'Commute', href: '/commute' },
   { label: 'Timeline', href: '/timeline' },
   { label: 'Counseling', href: '/counseling' },

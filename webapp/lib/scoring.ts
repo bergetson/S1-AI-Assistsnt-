@@ -1,5 +1,6 @@
-import type { SoldierProfile, Position, ScoredPosition, MatchLabel, CommuteLimit, CareerCategory } from './types'
+import type { SoldierProfile, Position, ScoredPosition, MatchLabel, CommuteLimit, CareerCategory, BoardAlert, PositionGap } from './types'
 import { getCommute } from './data/cities'
+import { ARNG_BOARDS, getNextBoardDate } from './data/boards'
 
 export const RANK_NUM: Record<string, number> = {
   E1:1, E2:2, E3:3, E4:4, E5:5, E6:6, E7:7, E8:8, E9:9,
@@ -388,4 +389,265 @@ export function getPromotionReadiness(profile: SoldierProfile): {
   else                         label = 'Not eligible yet'
 
   return { targetGrade, readiness, label, blockers }
+}
+
+// ── Board Alert ───────────────────────────────────────────────────────────────
+export function getBoardAlert(profile: SoldierProfile): BoardAlert | null {
+  const targetGrade = profile.targetRank
+  const board = ARNG_BOARDS.find(b => b.grade === targetGrade)
+  if (!board) return null
+
+  const next = getNextBoardDate(targetGrade)
+  if (!next) return null
+
+  const { label, blockers } = getPromotionReadiness(profile)
+
+  let urgencyLevel: 'critical' | 'warning' | 'info'
+  let message: string
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  if (next.monthsAway <= 3) {
+    urgencyLevel = 'critical'
+    message = `${board.name} convenes in ~${next.monthsAway} month${next.monthsAway === 1 ? '' : 's'} — records cutoff around ${fmt(next.cutoff)}.`
+  } else if (next.monthsAway <= 6) {
+    urgencyLevel = 'warning'
+    message = `${board.name} is ~${next.monthsAway} months away (est. ${fmt(next.convene)}) — record cutoff ~${fmt(next.cutoff)}.`
+  } else {
+    urgencyLevel = 'info'
+    message = `${board.name} typically convenes around ${fmt(next.convene)} (~${next.monthsAway} months). Promotion readiness: ${label}.`
+  }
+
+  const actions: string[] = []
+  for (const b of blockers) actions.push(b)
+  if (!profile.hasKdPosition && ['E7', 'E8', 'E9', 'O4', 'O5'].includes(targetGrade)) {
+    actions.push('Pursue a KD/leadership position before the board')
+  }
+
+  return {
+    grade: targetGrade,
+    boardName: board.name,
+    conveneDate: next.convene,
+    cutoffDate: next.cutoff,
+    monthsAway: next.monthsAway,
+    urgencyLevel,
+    message,
+    actions,
+  }
+}
+
+// ── Position Gap Analysis ─────────────────────────────────────────────────────
+export function getPositionGaps(profile: SoldierProfile, pos: Position): PositionGap[] {
+  const gaps: PositionGap[] = []
+  const posNum = RANK_NUM[pos.grade] ?? 0
+  const curNum = RANK_NUM[profile.rank] ?? 0
+
+  if (posNum < curNum) {
+    gaps.push({
+      category: 'grade', label: 'Below current grade',
+      detail: `This ${pos.grade} slot is below your ${profile.rank} — low career development value`,
+      severity: 'significant',
+    })
+  } else if (posNum > curNum + 1) {
+    gaps.push({
+      category: 'grade', label: 'Multiple grades ahead',
+      detail: `Requires ${posNum - curNum} promotion step${posNum - curNum > 1 ? 's' : ''} from your current ${profile.rank}`,
+      severity: 'blocking',
+    })
+  } else if (posNum === curNum + 1) {
+    const r = promotionReadiness(profile, pos.grade)
+    if (r < 0.4) {
+      gaps.push({
+        category: 'tig', label: 'Not yet in board zone',
+        detail: `TIG or PME requirements for ${pos.grade} are not yet met — check promotion readiness`,
+        severity: 'significant',
+      })
+    }
+  }
+
+  if (pos.mos && !pos.mos.startsWith('00') && pos.mos !== profile.mos && pos.mos !== profile.secondaryMos) {
+    const isSameField = pos.mos.slice(0, 2) === profile.mos.slice(0, 2)
+    gaps.push({
+      category: 'mos', label: isSameField ? 'Related but different MOS' : 'MOS mismatch',
+      detail: `Position requires ${pos.mos}; your MOS is ${profile.mos}${profile.secondaryMos ? '/' + profile.secondaryMos : ''}`,
+      severity: isSameField ? 'minor' : 'significant',
+    })
+  }
+
+  const commute = getCommute(profile.homeCity, pos.city)
+  if (commute) {
+    const limits: Record<CommuteLimit, number> = {
+      '30 Minutes': 30, '1 Hour': 60, '1.5 Hours': 90,
+      '2 Hours': 120, '3 Hours': 180, 'No Limit': 9999,
+    }
+    const limit = limits[profile.maxCommute]
+    if (commute.minutes > limit * 1.5) {
+      gaps.push({
+        category: 'commute', label: 'Commute exceeds limit',
+        detail: `${commute.minutes} min drive is well over your ${profile.maxCommute} preference`,
+        severity: 'significant',
+      })
+    } else if (commute.minutes > limit) {
+      gaps.push({
+        category: 'commute', label: 'Commute slightly over limit',
+        detail: `${commute.minutes} min drive is slightly over your ${profile.maxCommute} preference`,
+        severity: 'minor',
+      })
+    }
+  }
+
+  if (profile.primaryGoal === 'Pursue AGR Full-Time' && pos.statusType === 'M-Day') {
+    gaps.push({
+      category: 'goal', label: 'Status mismatch',
+      detail: 'Your goal is AGR full-time but this is an M-Day position',
+      severity: 'minor',
+    })
+  }
+  if (profile.primaryGoal === 'Pursue Command' && !pos.isCommandOrKD) {
+    gaps.push({
+      category: 'goal', label: 'Not a command/KD slot',
+      detail: 'Your primary goal is command but this is not a command or KD position',
+      severity: 'minor',
+    })
+  }
+
+  return gaps
+}
+
+// ── Career Path Sequencer ─────────────────────────────────────────────────────
+import type { CareerStep } from './types'
+
+const RANK_REVERSE: Record<number, string> = {}
+for (const [r, n] of Object.entries(RANK_NUM)) RANK_REVERSE[n] = r
+
+const PME_LABELS: Record<string, string> = {
+  blcComplete: 'Complete BLC (Basic Leader Course)',
+  alcComplete: 'Complete ALC (Advanced Leader Course)',
+  slcComplete: 'Complete SLC (Senior Leader Course)',
+  smcComplete: 'Complete SMC (Sergeants Major Course, Fort Bliss)',
+  bolcComplete: 'Complete BOLC (Basic Officer Leader Course)',
+  cccComplete: "Complete CCC (Captain's Career Course)",
+  ileComplete: 'Complete ILE / CGSC (Intermediate Level Education)',
+  sscComplete: 'Complete SSC (Senior Service College)',
+  wobcComplete: 'Complete WOBC (Warrant Officer Basic Course)',
+  woacComplete: 'Complete WOAC (Warrant Officer Advanced Course)',
+  woileComplete: 'Complete WOILE (Warrant Officer Intermediate Level Education)',
+}
+
+export function buildCareerPath(profile: SoldierProfile): CareerStep[] {
+  const curNum = RANK_NUM[profile.rank] ?? 0
+  const targetNum = RANK_NUM[profile.targetRank] ?? curNum
+  const steps: CareerStep[] = []
+  let stepYear = 0
+  const addedPme = new Set<string>()
+
+  // Current status
+  steps.push({
+    id: 'current',
+    year: 0,
+    title: `${profile.rank} — Current Status`,
+    type: 'milestone',
+    status: 'current',
+    description: `${profile.dutyTitle || 'Current position'} · ${profile.unitCity || profile.homeCity} · ${profile.yearsOfService} yrs service, ${profile.timeInGrade} yrs TIG`,
+    grade: profile.rank,
+  })
+
+  // Walk from current rank up to target
+  for (let n = curNum + 1; n <= targetNum; n++) {
+    const grade = RANK_REVERSE[n]
+    if (!grade) continue
+    const gate = PROMOTION_GATES[grade]
+    if (!gate) continue
+
+    // How many more years of TIG as the *previous* grade are needed?
+    const prevGrade = RANK_REVERSE[n - 1]
+    const tigAtPrev = n === curNum + 1 ? profile.timeInGrade : 0
+    const yearsToBoard = Math.max(0, gate.typicalTig - tigAtPrev)
+    stepYear += yearsToBoard
+
+    // Insert required PME steps before promotion (if not complete, deduplicated)
+    const allPme = [...gate.pmeRequired, ...gate.pmeAdvisory]
+    for (const pmeField of allPme) {
+      if (addedPme.has(pmeField)) continue
+      const done = (profile as unknown as Record<string, boolean>)[pmeField]
+      if (!done) {
+        addedPme.add(pmeField)
+        const pmeYear = Math.max(0, stepYear - 1)
+        const isRequired = gate.pmeRequired.includes(pmeField)
+        steps.push({
+          id: `pme-${grade}-${pmeField}`,
+          year: pmeYear,
+          title: PME_LABELS[pmeField] ?? pmeField,
+          type: 'pme',
+          status: 'future',
+          description: isRequired
+            ? `Required before ${grade} promotion — enroll as soon as eligible`
+            : `Strongly recommended before ${grade} board — improves record`,
+        })
+      }
+    }
+
+    // Promotion step
+    const prevGradeName = prevGrade ? ` from ${prevGrade}` : ''
+    steps.push({
+      id: `promote-${grade}`,
+      year: stepYear,
+      title: `Promote to ${grade}`,
+      type: 'promotion',
+      status: 'future',
+      description: `Target ${grade} promotion${prevGradeName}. Typical board zone: ${gate.typicalTig} yr TIG as ${prevGrade ?? 'prior grade'}. ${gate.notes.split('.')[0]}.`,
+      grade,
+    })
+
+    // After promotion, start fresh TIG clock (for next iteration, tigAtPrev is 0)
+    // Add a suggested assignment step between promotions
+    if (n < targetNum) {
+      const nextGrade = RANK_REVERSE[n + 1]
+      const nextGateExists = nextGrade && PROMOTION_GATES[nextGrade]
+      if (nextGateExists) {
+        steps.push({
+          id: `assign-${grade}`,
+          year: stepYear + 1,
+          title: `Seek KD / Leadership Assignment as ${grade}`,
+          type: 'assignment',
+          status: 'future',
+          description: `Pursue a key developmental or leadership position at ${grade} grade to strengthen board record for ${nextGrade ?? 'next promotion'}.`,
+          grade,
+        })
+      }
+    }
+  }
+
+  // 20-year retirement check
+  const yearsToRetirement = Math.max(0, 20 - profile.yearsOfService)
+  if (yearsToRetirement > 0 && yearsToRetirement <= 15) {
+    const retYear = new Date().getFullYear() + yearsToRetirement
+    steps.push({
+      id: 'retirement',
+      year: yearsToRetirement,
+      title: `20-Year Retirement Eligible (~${retYear})`,
+      type: 'milestone',
+      status: 'future',
+      description: `At ${profile.yearsOfService} years service now — retirement eligibility in approximately ${yearsToRetirement} more years.`,
+    })
+  }
+
+  // Sort by year then assign status
+  steps.sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year
+    const order = { current: 0, done: 1, next: 2, future: 3 }
+    return order[a.status] - order[b.status]
+  })
+
+  // Mark the first future step as 'next'
+  let markedNext = false
+  for (const s of steps) {
+    if (s.status === 'future' && !markedNext) {
+      s.status = 'next'
+      markedNext = true
+    }
+  }
+
+  return steps
 }

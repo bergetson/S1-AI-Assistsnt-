@@ -231,6 +231,37 @@ export interface MosTransition {
   difficulty: 'Easy' | 'Moderate' | 'Hard'
 }
 
+// ── Board Alert ───────────────────────────────────────────────────────────────
+export interface BoardAlert {
+  grade: string
+  boardName: string
+  conveneDate: Date
+  cutoffDate: Date
+  monthsAway: number
+  urgencyLevel: 'critical' | 'warning' | 'info'
+  message: string
+  actions: string[]
+}
+
+// ── Position Gap ──────────────────────────────────────────────────────────────
+export interface PositionGap {
+  category: 'grade' | 'mos' | 'commute' | 'goal' | 'tig'
+  label: string
+  detail: string
+  severity: 'blocking' | 'significant' | 'minor'
+}
+
+// ── Career Step ───────────────────────────────────────────────────────────────
+export interface CareerStep {
+  id: string
+  year: number
+  title: string
+  type: 'promotion' | 'pme' | 'assignment' | 'milestone'
+  description: string
+  status: 'done' | 'current' | 'next' | 'future'
+  grade?: string
+}
+
 // ── Promotion Timeline ────────────────────────────────────────────────────────
 export interface PromotionRequirement {
   careerCategory: CareerCategory
