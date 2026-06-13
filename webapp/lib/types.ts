@@ -231,6 +231,15 @@ export interface MosTransition {
   difficulty: 'Easy' | 'Moderate' | 'Hard'
 }
 
+// ── Action Item (for "Get This Position" plan) ───────────────────────────────
+export interface ActionItem {
+  label: string
+  detail: string
+  done: boolean
+  priority: 'required' | 'recommended' | 'info'
+  timeline?: string
+}
+
 // ── Board Alert ───────────────────────────────────────────────────────────────
 export interface BoardAlert {
   grade: string

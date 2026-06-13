@@ -651,3 +651,192 @@ export function buildCareerPath(profile: SoldierProfile): CareerStep[] {
 
   return steps
 }
+
+// ── Position Action Plan ──────────────────────────────────────────────────────
+import type { ActionItem } from './types'
+
+export function getPositionActionPlan(profile: SoldierProfile, pos: Position): ActionItem[] {
+  const items: ActionItem[] = []
+  const posNum = RANK_NUM[pos.grade] ?? 0
+  const curNum = RANK_NUM[profile.rank] ?? 0
+
+  // ── Grade / eligibility ───────────────────────────────────────────────────
+  if (posNum < curNum) {
+    items.push({
+      label: 'Grade: below your current rank',
+      detail: `This ${pos.grade} position is below your ${profile.rank} — limited development value`,
+      done: false, priority: 'info',
+    })
+  } else if (posNum === curNum) {
+    items.push({
+      label: 'Grade: lateral move — eligible now',
+      detail: `Your ${profile.rank} rank qualifies you directly for this position`,
+      done: true, priority: 'required',
+    })
+  } else if (posNum === curNum + 1) {
+    const gate = PROMOTION_GATES[pos.grade]
+    const r = gate ? promotionReadiness(profile, pos.grade) : 1
+
+    // TIG check
+    if (gate) {
+      const tigOk = profile.timeInGrade >= gate.minTig
+      const tigToTypical = Math.max(0, gate.typicalTig - profile.timeInGrade)
+      items.push({
+        label: tigOk ? `TIG: minimum met (${profile.timeInGrade} yr ≥ ${gate.minTig} yr)` : `TIG: ${(gate.minTig - profile.timeInGrade).toFixed(1)} more years needed as ${profile.rank}`,
+        detail: tigOk
+          ? (tigToTypical > 0 ? `Eligible for board; competitive zone at ${gate.typicalTig} yr TIG (${tigToTypical.toFixed(1)} yr to go)` : 'In the competitive board zone')
+          : `Minimum TIG for ${pos.grade} is ${gate.minTig} yr — not yet board-eligible`,
+        done: tigOk, priority: 'required',
+        timeline: tigOk ? undefined : `~${Math.ceil((gate.minTig - profile.timeInGrade) * 12)} months`,
+      })
+
+      // Required PME
+      for (const pmeField of gate.pmeRequired) {
+        const done = (profile as unknown as Record<string, boolean>)[pmeField]
+        const pmeLabels: Record<string, string> = {
+          bolcComplete: 'BOLC', cccComplete: 'CCC', ileComplete: 'ILE', sscComplete: 'SSC',
+          blcComplete: 'BLC', alcComplete: 'ALC', slcComplete: 'SLC', smcComplete: 'SMC',
+          wobcComplete: 'WOBC', woacComplete: 'WOAC', woileComplete: 'WOILE',
+        }
+        const pmeName = pmeLabels[pmeField] ?? pmeField
+        items.push({
+          label: done ? `${pmeName}: complete ✓` : `${pmeName}: required — not yet complete`,
+          detail: done
+            ? `${pmeName} is complete — satisfies the requirement for ${pos.grade}`
+            : `${pmeName} must be complete before ${pos.grade} promotion — enroll as soon as eligible`,
+          done, priority: 'required',
+          timeline: done ? undefined : '3–12 months depending on course availability',
+        })
+      }
+
+      // Advisory PME
+      for (const pmeField of gate.pmeAdvisory) {
+        const done = (profile as unknown as Record<string, boolean>)[pmeField]
+        const pmeLabels: Record<string, string> = {
+          bolcComplete: 'BOLC', cccComplete: 'CCC', ileComplete: 'ILE', sscComplete: 'SSC',
+          blcComplete: 'BLC', alcComplete: 'ALC', slcComplete: 'SLC', smcComplete: 'SMC',
+          wobcComplete: 'WOBC', woacComplete: 'WOAC', woileComplete: 'WOILE',
+        }
+        const pmeName = pmeLabels[pmeField] ?? pmeField
+        items.push({
+          label: done ? `${pmeName}: complete ✓` : `${pmeName}: strongly recommended`,
+          detail: done
+            ? `${pmeName} complete — strengthens your board record`
+            : `${pmeName} is not a hard gate (PPOM 24-014) but boards notice incomplete PME — complete ASAP`,
+          done, priority: 'recommended',
+          timeline: done ? undefined : '3–12 months',
+        })
+      }
+
+      // KD position
+      if (['E7','E8','E9','O4','O5'].includes(pos.grade)) {
+        items.push({
+          label: profile.hasKdPosition ? 'KD position: on record ✓' : 'KD/leadership position needed',
+          detail: profile.hasKdPosition
+            ? 'Key developmental position on your record — this is a significant advantage'
+            : `A KD or leadership position before the ${pos.grade} board significantly improves selection odds`,
+          done: profile.hasKdPosition, priority: 'recommended',
+          timeline: profile.hasKdPosition ? undefined : '6–24 months (seek PSG/SL/CDR role)',
+        })
+      }
+
+      // Promotable status
+      if (profile.isPromotable || profile.onPromotionList) {
+        items.push({
+          label: 'Promotable / on list: yes ✓',
+          detail: 'Promotable status or being on the promotion list gives you a readiness advantage',
+          done: true, priority: 'info',
+        })
+      } else if (r < 0.7) {
+        items.push({
+          label: 'Overall readiness: work to do',
+          detail: `Current promotion readiness for ${pos.grade} is ${Math.round(r * 100)}% — address PME and TIG gaps first`,
+          done: false, priority: 'recommended',
+        })
+      }
+    }
+  } else {
+    items.push({
+      label: `Grade: requires ${posNum - curNum} promotion step${posNum - curNum > 1 ? 's' : ''}`,
+      detail: `You need to promote through ${posNum - curNum} grade${posNum - curNum > 1 ? 's' : ''} before this position is in range`,
+      done: false, priority: 'required',
+    })
+  }
+
+  // ── MOS ───────────────────────────────────────────────────────────────────
+  if (!pos.mos || pos.mos.startsWith('00')) {
+    items.push({
+      label: 'MOS: open to multiple — you qualify',
+      detail: 'This position accepts various MOSs within its career category',
+      done: true, priority: 'required',
+    })
+  } else if (pos.mos === profile.mos || pos.mos === profile.secondaryMos) {
+    items.push({
+      label: `MOS: exact match (${pos.mos}) ✓`,
+      detail: 'Your MOS directly qualifies you for this position',
+      done: true, priority: 'required',
+    })
+  } else if (profile.wantToSwitchMos === 'Yes' && pos.mos === profile.targetMos) {
+    items.push({
+      label: `MOS: your reclass target (${pos.mos})`,
+      detail: `This position uses your target MOS — complete MOS reclassification first via your unit S1`,
+      done: false, priority: 'required',
+      timeline: 'MOS reclass: 6–18 months',
+    })
+  } else {
+    const sameField = pos.mos.slice(0, 2) === profile.mos.slice(0, 2)
+    items.push({
+      label: sameField ? `MOS: related field (${pos.mos} vs your ${profile.mos})` : `MOS: mismatch (${pos.mos} required)`,
+      detail: sameField
+        ? `Related MOS — partial credit. A commander waiver or MOS reclassification may be possible`
+        : `Position requires ${pos.mos}. Requires MOS reclassification — talk to your S1 about the process`,
+      done: false, priority: sameField ? 'recommended' : 'required',
+      timeline: 'MOS reclass: 6–18 months if needed',
+    })
+  }
+
+  // ── Vacancy urgency ───────────────────────────────────────────────────────
+  if (pos.vacancyStatus === 'Vacant') {
+    items.push({
+      label: 'Vacancy: OPEN NOW — act this month',
+      detail: 'This position is currently vacant. Contact the unit S1 directly to express interest',
+      done: false, priority: 'required',
+      timeline: 'This month',
+    })
+  } else if (pos.vacancyStatus === 'Projected Vacant') {
+    items.push({
+      label: 'Vacancy: projected to open — establish contact now',
+      detail: `Position projected to become vacant${pos.projectedVacancyDate ? ' ' + pos.projectedVacancyDate : ' soon'}. Build a relationship with the unit before it opens`,
+      done: false, priority: 'recommended',
+      timeline: pos.projectedVacancyDate ?? '1–6 months',
+    })
+  } else {
+    items.push({
+      label: 'Vacancy: filled — monitor for future opening',
+      detail: 'Position is currently filled. Add it to your watchlist and check back quarterly',
+      done: false, priority: 'info',
+    })
+  }
+
+  // ── Commute ───────────────────────────────────────────────────────────────
+  const commute = getCommute(profile.homeCity, pos.city)
+  if (commute) {
+    const limits: Record<CommuteLimit, number> = {
+      '30 Minutes': 30, '1 Hour': 60, '1.5 Hours': 90,
+      '2 Hours': 120, '3 Hours': 180, 'No Limit': 9999,
+    }
+    const limit = limits[profile.maxCommute]
+    const withinLimit = commute.minutes <= limit
+    items.push({
+      label: withinLimit
+        ? `Commute: ${commute.minutes} min — within your preference ✓`
+        : `Commute: ${commute.minutes} min — over your ${profile.maxCommute} preference`,
+      detail: withinLimit
+        ? `${commute.miles} mi from ${profile.homeCity} — fits your commute preference`
+        : `${commute.miles} mi from ${profile.homeCity}. Consider adjusting your commute preference or relocating`,
+      done: withinLimit, priority: 'info',
+    })
+  }
+
+  return items
+}

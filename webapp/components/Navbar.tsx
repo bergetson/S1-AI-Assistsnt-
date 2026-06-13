@@ -10,6 +10,7 @@ const navLinks = [
   { label: 'Matches', href: '/matches' },
   { label: 'Career Path', href: '/career-path' },
   { label: 'Career Brief', href: '/career-brief' },
+  { label: 'MOS Reclass', href: '/reclassification' },
   { label: 'Commute', href: '/commute' },
   { label: 'Timeline', href: '/timeline' },
   { label: 'Counseling', href: '/counseling' },

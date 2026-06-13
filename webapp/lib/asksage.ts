@@ -1,5 +1,6 @@
 import type { SoldierProfile, ScoredPosition } from './types'
 import { PROMOTION_GATES, getPromotionReadiness, getBoardAlert } from './scoring'
+import { getTransitionTo, MOS_POSITION_COUNTS } from './data/mosTransitions'
 
 const YEAR = new Date().getFullYear()
 
@@ -59,6 +60,24 @@ Clearance: ${profile.clearanceLevel} | Deployments: ${profile.deployments}
 
 == PROMOTION READINESS ASSESSMENT ==
 ${promoContext || '(Unable to assess — complete your profile)'}
+
+${(profile.wantToSwitchMos === 'Yes' || profile.wantToSwitchMos === 'Considering it') && profile.targetMos ? `== MOS RECLASSIFICATION INTENT ==
+Soldier wants to reclass FROM ${profile.mos} TO ${profile.targetMos}.
+${(() => {
+  const t = getTransitionTo(profile.targetMos)
+  const cnt = MOS_POSITION_COUNTS[profile.targetMos] ?? 0
+  if (!t) return `No specific reclass data on file for ${profile.targetMos}. Advise checking DA PAM 611-21 and contacting MTARNG G1 for current requirements. ${cnt > 0 ? `MTARNG has ~${cnt} positions in this MOS.` : ''}`
+  return `Target MOS: ${t.toMos} — ${t.toMosTitle}
+  ASVAB Requirement: ${t.asvabReq}
+  School: ${t.mosqSchool} (${t.schoolDuration})
+  Eligible Grades: ${t.eligibleGrades}
+  Difficulty: ${t.difficulty}
+  MTARNG Positions: ~${cnt} slots statewide
+  Waiver Available: ${t.waiverAvailable ? 'Yes' : 'No'}
+  Process notes: ${t.notes}
+  Reclass timeline: typically 6–18 months from G1 approval to new MOS award.
+  Next steps: (1) verify ASVAB line scores vs. ${t.asvabReq}, (2) unit S1 initiates DA 4187, (3) G1 approves against MTARNG force structure needs, (4) school orders, (5) new MOS awarded.`
+})()}` : ''}
 
 == UPCOMING BOARD ALERT ==
 ${(() => {

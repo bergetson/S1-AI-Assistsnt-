@@ -116,6 +116,14 @@ const FEATURES = [
     badge: 'New',
   },
   {
+    href: '/reclassification',
+    icon: '🔄',
+    title: 'MOS Reclassification',
+    desc: 'Want to switch MOS? See ASVAB requirements, school length, MTARNG position counts, and the full process — for 12 common reclass targets.',
+    bg: 'from-violet-700 to-violet-900',
+    badge: null,
+  },
+  {
     href: '/commute',
     icon: '🚗',
     title: 'Commute Analysis',
@@ -416,7 +424,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <div className="text-amber-600 text-xs font-bold tracking-widest uppercase mb-3">Everything You Need</div>
-            <h2 className="text-4xl font-extrabold text-gray-900">Eight tools. One system.</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900">Nine tools. One system.</h2>
             <p className="text-gray-500 mt-3 text-lg max-w-2xl mx-auto">
               From building your profile to printing your career brief — Steeves handles the full career planning cycle.
             </p>

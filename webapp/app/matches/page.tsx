@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
-import { scoreAllPositions, scoreAlternatePaths, matchLabelColor, matchLabelDot, getBoardAlert, getPositionGaps } from '@/lib/scoring'
+import { scoreAllPositions, scoreAlternatePaths, matchLabelColor, matchLabelDot, getBoardAlert, getPositionActionPlan } from '@/lib/scoring'
 import { cn } from '@/lib/utils'
 import type { ScoredPosition, MatchLabel, BoardAlert, SoldierProfile } from '@/lib/types'
+import Link from 'next/link'
 
 const MATCH_LABELS: MatchLabel[] = [
   'STRONG MATCH',
@@ -119,6 +120,23 @@ export default function MatchesPage() {
       {/* B2. Board alert banner */}
       {boardAlert && (
         <BoardAlertBanner alert={boardAlert} />
+      )}
+
+      {/* B3. MOS reclass callout */}
+      {(profile.wantToSwitchMos === 'Yes' || profile.wantToSwitchMos === 'Considering it') && profile.targetMos && (
+        <div className="px-8 py-3 border-b bg-violet-50 border-violet-200 border-l-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-base">🔄</span>
+            <span className="text-sm text-violet-800">
+              <strong>MOS Switch Goal:</strong> You&apos;re interested in reclassing to{' '}
+              <strong>{profile.targetMos}</strong>. Positions in that MOS are highlighted below.
+            </span>
+            <Link href="/reclassification"
+              className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-violet-700 text-white font-semibold whitespace-nowrap">
+              Reclass Pathway →
+            </Link>
+          </div>
+        </div>
       )}
 
       {/* C. Summary stats row */}
@@ -309,8 +327,10 @@ function BoardAlertBanner({ alert }: { alert: BoardAlert }) {
 }
 
 function PositionCard({ pos, profile }: { pos: ScoredPosition; profile: SoldierProfile }) {
-  const [showGaps, setShowGaps] = useState(false)
-  const gaps = useMemo(() => getPositionGaps(profile, pos), [profile, pos])
+  const [showPlan, setShowPlan] = useState(false)
+  const plan = useMemo(() => getPositionActionPlan(profile, pos), [profile, pos])
+  const blockers = plan.filter(i => !i.done && i.priority === 'required').length
+  const urgent = pos.vacancyStatus === 'Vacant'
   return (
     <div className="bg-white rounded-xl shadow border border-gray-200 p-5 hover:shadow-md transition">
       {/* Top row */}
@@ -436,35 +456,50 @@ function PositionCard({ pos, profile }: { pos: ScoredPosition; profile: SoldierP
         </div>
       )}
 
-      {/* Gap analysis toggle */}
+      {/* Action plan toggle */}
       <div className="mt-3 border-t border-gray-100 pt-2">
         <button
           type="button"
-          onClick={() => setShowGaps(v => !v)}
-          className="text-xs text-gray-400 hover:text-gray-600 w-full text-left flex items-center gap-1"
+          onClick={() => setShowPlan(v => !v)}
+          className={cn(
+            'text-xs w-full text-left flex items-center gap-1.5 font-medium',
+            urgent ? 'text-green-700 hover:text-green-800' :
+            blockers > 0 ? 'text-orange-700 hover:text-orange-800' :
+            'text-blue-700 hover:text-blue-800'
+          )}
         >
-          <span>{showGaps ? '▲' : '▼'}</span>
-          <span>{gaps.length === 0 ? '✓ No scoring gaps' : `${gaps.length} gap${gaps.length > 1 ? 's' : ''} — why this score?`}</span>
+          <span>{showPlan ? '▲' : '▼'}</span>
+          <span>
+            {urgent ? '🟢 Vacant — What do I need to apply?' :
+             blockers > 0 ? `⚠ ${blockers} step${blockers > 1 ? 's' : ''} needed — What do I need?` :
+             '✓ You qualify — see action plan'}
+          </span>
         </button>
-        {showGaps && (
-          <div className="mt-2 space-y-1">
-            {gaps.length === 0 ? (
-              <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
-                ✓ Strong alignment across grade, MOS, commute, and goal
-              </div>
-            ) : (
-              gaps.map((g, i) => {
-                const severityStyle =
-                  g.severity === 'blocking'    ? 'bg-red-50 border-red-200 text-red-800' :
-                  g.severity === 'significant' ? 'bg-orange-50 border-orange-200 text-orange-800' :
-                                                  'bg-yellow-50 border-yellow-200 text-yellow-800'
-                return (
-                  <div key={i} className={cn('text-xs border rounded px-2 py-1', severityStyle)}>
-                    <span className="font-semibold">{g.label}:</span> {g.detail}
+        {showPlan && (
+          <div className="mt-2 space-y-1.5">
+            {plan.map((item, i) => {
+              const rowStyle = item.done
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : item.priority === 'required'
+                  ? 'bg-red-50 border-red-200 text-red-800'
+                  : item.priority === 'recommended'
+                    ? 'bg-amber-50 border-amber-200 text-amber-800'
+                    : 'bg-gray-50 border-gray-200 text-gray-600'
+              return (
+                <div key={i} className={cn('text-xs border rounded px-2 py-1.5', rowStyle)}>
+                  <div className="flex items-start gap-1.5">
+                    <span className="flex-shrink-0 mt-0.5">{item.done ? '✓' : item.priority === 'required' ? '✗' : '○'}</span>
+                    <div>
+                      <div className="font-semibold">{item.label}</div>
+                      <div className="opacity-80 mt-0.5">{item.detail}</div>
+                      {item.timeline && !item.done && (
+                        <div className="mt-0.5 opacity-70 italic">Timeline: {item.timeline}</div>
+                      )}
+                    </div>
                   </div>
-                )
-              })
-            )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
