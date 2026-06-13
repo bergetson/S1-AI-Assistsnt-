@@ -55,7 +55,10 @@ export default function MatchesPage() {
     let list = [...scored]
     if (filterCity) list = list.filter(p => p.city === filterCity)
     if (filterLabel) list = list.filter(p => p.matchLabel === filterLabel)
-    if (filterVacancy === 'Vacant & Projected Only') list = list.filter(p => p.vacancyStatus !== 'Filled')
+    if (filterVacancy === 'Vacant') list = list.filter(p => p.vacancyStatus === 'Vacant')
+    else if (filterVacancy === 'Projected Vacant') list = list.filter(p => p.vacancyStatus === 'Projected Vacant')
+    else if (filterVacancy === 'Vacant + Projected') list = list.filter(p => p.vacancyStatus !== 'Filled')
+    else if (filterVacancy === 'Filled') list = list.filter(p => p.vacancyStatus === 'Filled')
     if (filterCategory) list = list.filter(p => p.careerCategory === filterCategory)
     if (filterStatus) list = list.filter(p => p.statusType === filterStatus || p.statusType === 'Multiple')
     if (sortBy === 'city') list.sort((a, b) => a.city.localeCompare(b.city))
@@ -111,7 +114,9 @@ export default function MatchesPage() {
           Position Matches
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Showing {filtered.length} of {scored.length} positions — sorted by match score
+          Showing {filtered.length} of {scored.length} positions
+          {filterVacancy ? ` — ${filterVacancy}` : ''}
+          {' '}— sorted by {sortBy === 'score' ? 'match score' : sortBy}
         </p>
       </div>
 
@@ -176,14 +181,22 @@ export default function MatchesPage() {
 
           {/* Vacancy */}
           <div className="flex flex-col">
-            <label className={labelClass}>Vacancy</label>
+            <label className={labelClass}>Vacancy Status</label>
             <select
-              className={selectClass}
+              className={cn(
+                selectClass,
+                filterVacancy === 'Vacant' || filterVacancy === 'Vacant + Projected'
+                  ? 'border-green-500 ring-1 ring-green-500'
+                  : ''
+              )}
               value={filterVacancy}
               onChange={e => setFilterVacancy(e.target.value)}
             >
               <option value="">All Positions</option>
-              <option value="Vacant & Projected Only">Vacant &amp; Projected Only</option>
+              <option value="Vacant">Vacant Only</option>
+              <option value="Vacant + Projected">Vacant + Projected</option>
+              <option value="Projected Vacant">Projected Vacant Only</option>
+              <option value="Filled">Filled Only</option>
             </select>
           </div>
 
