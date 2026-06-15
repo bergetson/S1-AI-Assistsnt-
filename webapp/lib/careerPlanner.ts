@@ -5,14 +5,12 @@ import { RANK_NUM, PROMOTION_GATES, scorePosition } from './scoring'
 const RANK_REVERSE: Record<number, string> = {}
 for (const [grade, n] of Object.entries(RANK_NUM)) RANK_REVERSE[n] = grade
 
-// Top grade reachable in each career category
 const CATEGORY_CEILING: Record<CareerCategory, number> = {
-  Enlisted: RANK_NUM.E9,   // 9
-  Warrant:  RANK_NUM.W5,   // 14
-  Officer:  RANK_NUM.O6,   // 20
+  Enlisted: RANK_NUM.E9,
+  Warrant:  RANK_NUM.W5,
+  Officer:  RANK_NUM.O6,
 }
 
-// PME field → short course name
 const PME_INFO: Record<string, string> = {
   ssd1Complete: 'SSD1', ssd2Complete: 'SSD2',
   blcComplete: 'BLC', alcComplete: 'ALC', slcComplete: 'SLC', smcComplete: 'SMC',
@@ -20,12 +18,31 @@ const PME_INFO: Record<string, string> = {
   wobcComplete: 'WOBC', woacComplete: 'WOAC', woileComplete: 'WOILE', wosseComplete: 'WOSSE',
 }
 
-const MAX_STEPS = 7            // total forward steps to plan (keeps lists sane)
-const OPTIONS_PER_SLOT = 6     // candidate billets surfaced per grade slot
-const MIN_DWELL = 1.5          // 18-month floor on time-in-position
+// Typical role + focus per grade (educational context, formerly the Timeline page)
+const ROLE_INFO: Record<string, { name: string; role: string; focus: string }> = {
+  E5: { name: 'Sergeant (SGT)', role: 'Team Leader / Section NCOIC', focus: 'Lead a team, complete BLC, master NCO fundamentals.' },
+  E6: { name: 'Staff Sergeant (SSG)', role: 'Squad Leader / Staff NCOIC', focus: 'Hold a KD squad leader role; complete ALC; pursue AGR.' },
+  E7: { name: 'Sergeant First Class (SFC)', role: 'Platoon Sergeant / NCOIC', focus: 'Serve as PSG; complete SLC; mentor junior NCOs.' },
+  E8: { name: 'Master Sergeant / 1SG', role: '1SG (command) or MSG (staff)', focus: 'Compete for 1SG or a senior staff NCOIC role.' },
+  E9: { name: 'Sergeant Major / CSM', role: 'CSM or SGM (BN / State HQ)', focus: 'Senior enlisted leader; capstone and legacy.' },
+  W1: { name: 'Warrant Officer 1 (WO1)', role: 'Technical Expert / Advisor', focus: 'Complete WOBC; build technical depth.' },
+  W2: { name: 'Chief Warrant Officer 2 (CW2)', role: 'Technical Specialist / Section OIC', focus: 'Complete WOAC; section OIC; certifications.' },
+  W3: { name: 'Chief Warrant Officer 3 (CW3)', role: 'Senior Technical Advisor', focus: 'BN-level integrator; mentor junior warrants.' },
+  W4: { name: 'Chief Warrant Officer 4 (CW4)', role: 'Senior Technical Expert', focus: 'BDE/HQ technical authority; program roles.' },
+  W5: { name: 'Chief Warrant Officer 5 (CW5)', role: 'Master Technical Expert', focus: 'State technical authority / proponent.' },
+  O1: { name: '2nd Lieutenant (2LT)', role: 'Platoon Leader', focus: 'Complete BOLC; lead a platoon.' },
+  O2: { name: '1st Lieutenant (1LT)', role: 'Platoon Leader / XO', focus: 'Company XO or specialty platoon; build OERs.' },
+  O3: { name: 'Captain (CPT)', role: 'Company Commander / Primary Staff', focus: 'Company command + KD staff (S3/S4/S1); complete CCC.' },
+  O4: { name: 'Major (MAJ)', role: 'BN XO / Brigade Primary Staff', focus: 'BN XO or BDE S-staff (S3/S4/S1); complete ILE.' },
+  O5: { name: 'Lieutenant Colonel (LTC)', role: 'Battalion Commander / G-Staff Director', focus: 'Compete for BN command; HQ director roles.' },
+  O6: { name: 'Colonel (COL)', role: 'Brigade Commander / State HQ', focus: 'Brigade command or senior state HQ leadership.' },
+}
 
-// Selectable time-in-position values (years)
-export const DWELL_CHOICES = [1.5, 2, 2.5, 3, 4, 5]
+const MAX_PHASES = 7
+const OPTIONS_PER_SLOT = 8
+const MIN_DWELL = 1.5
+
+export const DWELL_CHOICES = [1.5, 2, 3, 4, 5, 6, 7, 8]
 
 export type PlannerTrack = 'current' | 'ocs' | 'wocs'
 
@@ -36,38 +53,43 @@ export interface PlannerPme {
   alreadyDone: boolean
 }
 
-export interface PlannerSlot {
-  id: string                    // stable id
+// One job the soldier plans to hold (a position + how long they stay)
+export interface Pick {
+  positionId: number | null
+  dwellYears: number
+}
+
+export interface PlannerPhase {
+  id: string
   kind: 'grade' | 'commission'
-  category: CareerCategory      // category this slot belongs to
-  grade: string                 // grade pinned at this slot (entry grade for commission)
+  category: CareerCategory
+  grade: string
+  gradeName: string
+  role: string
+  focus: string
   stepIndex: number
-  leadYears: number             // time to reach FIRST slot from now (only used on slot 0)
-  defaultDwellYears: number     // default time-in-position before moving on
+  leadYears: number          // time to reach FIRST phase from now (only used on phase 0)
+  nextTypicalTig: number     // typical years at THIS grade before the next board (0 if none)
+  nextMinTig: number         // minimum years at this grade before next board (0 if none)
+  defaultDwellYears: number
   minDwellYears: number
   pme: PlannerPme[]
-  options: ScoredPosition[]     // candidate billets at this grade (best first)
+  options: ScoredPosition[]
   suggestedPositionId: number | null
   commissionType?: 'OCS' | 'WOCS'
 }
 
-// ── Slot builders ─────────────────────────────────────────────────────────────
+// ── Builders ──────────────────────────────────────────────────────────────────
 function pmeDone(profile: SoldierProfile, field: string): boolean {
   return Boolean((profile as unknown as Record<string, boolean>)[field])
 }
 
-function gradeName(grade: string): string {
-  const names: Record<string, string> = {
-    E5: 'Sergeant', E6: 'Staff Sergeant', E7: 'Sergeant First Class', E8: 'Master Sergeant / 1SG', E9: 'Sergeant Major / CSM',
-    W1: 'Warrant Officer 1', W2: 'CW2', W3: 'CW3', W4: 'CW4', W5: 'CW5',
-    O1: '2nd Lieutenant', O2: '1st Lieutenant', O3: 'Captain', O4: 'Major', O5: 'Lieutenant Colonel', O6: 'Colonel',
-  }
-  return names[grade] ?? grade
+function roleInfo(grade: string): { name: string; role: string; focus: string } {
+  return ROLE_INFO[grade] ?? { name: grade, role: '', focus: '' }
 }
 
-// Score a billet as if the soldier already held this grade/category — answers
-// "which billets fit me when I'm a <grade>?" (the planning question).
-function scoreForSlot(profile: SoldierProfile, pos: Position, category: CareerCategory, grade: string): ScoredPosition {
+// Score a billet as if the soldier already held this grade/category.
+function scoreForGrade(profile: SoldierProfile, pos: Position, category: CareerCategory, grade: string): ScoredPosition {
   const projected: SoldierProfile = { ...profile, careerCategory: category, rank: grade, targetRank: grade }
   return scorePosition(projected, pos)
 }
@@ -75,7 +97,7 @@ function scoreForSlot(profile: SoldierProfile, pos: Position, category: CareerCa
 function buildOptions(profile: SoldierProfile, positions: Position[], category: CareerCategory, grade: string): ScoredPosition[] {
   return positions
     .filter(p => p.careerCategory === category && p.grade === grade)
-    .map(p => scoreForSlot(profile, p, category, grade))
+    .map(p => scoreForGrade(profile, p, category, grade))
     .sort((a, b) => b.totalScore - a.totalScore)
     .slice(0, OPTIONS_PER_SLOT)
 }
@@ -90,15 +112,21 @@ function gatePme(profile: SoldierProfile, grade: string): PlannerPme[] {
   return pme
 }
 
-function gradeSlot(profile: SoldierProfile, positions: Position[], category: CareerCategory, grade: string, stepIndex: number): PlannerSlot {
+function gradePhase(profile: SoldierProfile, positions: Position[], category: CareerCategory, grade: string, stepIndex: number): PlannerPhase {
   const options = buildOptions(profile, positions, category, grade)
+  const info = roleInfo(grade)
   return {
-    id: `slot-${category[0]}-${grade}`,
+    id: `phase-${category[0]}-${grade}`,
     kind: 'grade',
     category,
     grade,
+    gradeName: info.name,
+    role: info.role,
+    focus: info.focus,
     stepIndex,
     leadYears: 0,
+    nextTypicalTig: 0,
+    nextMinTig: 0,
     defaultDwellYears: 2,
     minDwellYears: MIN_DWELL,
     pme: gatePme(profile, grade),
@@ -107,21 +135,29 @@ function gradeSlot(profile: SoldierProfile, positions: Position[], category: Car
   }
 }
 
-function commissionSlot(profile: SoldierProfile, positions: Position[], type: 'OCS' | 'WOCS', stepIndex: number): PlannerSlot {
+function commissionPhase(profile: SoldierProfile, positions: Position[], type: 'OCS' | 'WOCS', stepIndex: number): PlannerPhase {
   const category: CareerCategory = type === 'OCS' ? 'Officer' : 'Warrant'
   const entryGrade = type === 'OCS' ? 'O1' : 'W1'
   const options = buildOptions(profile, positions, category, entryGrade)
+  const info = roleInfo(entryGrade)
   const pme: PlannerPme[] = type === 'OCS'
     ? [{ field: 'bolcComplete', name: 'BOLC', required: true, alreadyDone: pmeDone(profile, 'bolcComplete') }]
     : [{ field: 'wobcComplete', name: 'WOBC', required: true, alreadyDone: pmeDone(profile, 'wobcComplete') }]
   return {
-    id: `slot-commission-${type}`,
+    id: `phase-commission-${type}`,
     kind: 'commission',
     commissionType: type,
     category,
     grade: entryGrade,
+    gradeName: info.name,
+    role: info.role,
+    focus: type === 'OCS'
+      ? 'Attend OCS, commission, complete BOLC, then lead a platoon.'
+      : 'Attend WOCS, appoint as WO1, complete WOBC, build technical depth.',
     stepIndex,
     leadYears: 0,
+    nextTypicalTig: 0,
+    nextMinTig: 0,
     defaultDwellYears: type === 'OCS' ? 2 : 1.5,
     minDwellYears: MIN_DWELL,
     pme,
@@ -130,75 +166,73 @@ function commissionSlot(profile: SoldierProfile, positions: Position[], type: 'O
   }
 }
 
-// Set slot[0] lead time and default dwell per slot (lookahead at next grade's TIG)
-function finalizeTiming(profile: SoldierProfile, slots: PlannerSlot[]): void {
-  if (slots.length === 0) return
-  const first = slots[0]
+function finalizeTiming(profile: SoldierProfile, phases: PlannerPhase[]): void {
+  if (phases.length === 0) return
+  const first = phases[0]
   if (first.kind === 'commission') {
-    first.leadYears = 1.0 // packet + school before commissioning
+    first.leadYears = 1.0
   } else {
     const tig = PROMOTION_GATES[first.grade]?.typicalTig ?? 2
     first.leadYears = Math.max(0.5, tig - profile.timeInGrade)
   }
-  for (let i = 0; i < slots.length; i++) {
-    const next = slots[i + 1]
-    const lookTig = next ? (PROMOTION_GATES[next.grade]?.typicalTig ?? 3) : 3
-    slots[i].defaultDwellYears = Math.min(6, Math.max(MIN_DWELL, lookTig))
+  for (let i = 0; i < phases.length; i++) {
+    const next = phases[i + 1]
+    const nextGate = next ? PROMOTION_GATES[next.grade] : undefined
+    phases[i].nextTypicalTig = nextGate?.typicalTig ?? 0
+    phases[i].nextMinTig = nextGate?.minTig ?? 0
+    // Default a single starting job to the realistic time-at-grade (typical TIG to
+    // the next board). The user can split this across multiple jobs or shorten it.
+    const base = nextGate?.typicalTig ?? (next ? 2 : 3)
+    phases[i].defaultDwellYears = Math.min(8, Math.max(MIN_DWELL, base))
   }
 }
 
 // ── Main builder ──────────────────────────────────────────────────────────────
-export function buildPlannerSlots(
+export function buildPlannerPhases(
   profile: SoldierProfile,
   positions: Position[],
   opts: { track?: PlannerTrack; commissionAfterGrade?: string } = {}
-): PlannerSlot[] {
+): PlannerPhase[] {
   const track: PlannerTrack = profile.careerCategory === 'Enlisted' ? (opts.track ?? 'current') : 'current'
 
-  if (track === 'current') {
-    return buildSameCategory(profile, positions)
-  }
+  if (track === 'current') return buildSameCategory(profile, positions)
 
-  // OCS / WOCS branch: enlisted progression → commission → new category
   const type: 'OCS' | 'WOCS' = track === 'ocs' ? 'OCS' : 'WOCS'
   const newCat: CareerCategory = type === 'OCS' ? 'Officer' : 'Warrant'
   const curNum = RANK_NUM[profile.rank] ?? 0
   const commissionAfterNum = RANK_NUM[opts.commissionAfterGrade ?? profile.rank] ?? curNum
-  const slots: PlannerSlot[] = []
+  const phases: PlannerPhase[] = []
   let step = 0
 
-  // Enlisted grades pursued before commissioning
   const eCeil = CATEGORY_CEILING.Enlisted
   for (let n = curNum + 1; n <= Math.min(commissionAfterNum, eCeil); n++) {
     const g = RANK_REVERSE[n]
     if (!g) continue
-    slots.push(gradeSlot(profile, positions, 'Enlisted', g, step++))
-    if (step >= MAX_STEPS) break
+    phases.push(gradePhase(profile, positions, 'Enlisted', g, step++))
+    if (step >= MAX_PHASES) break
   }
 
-  // Commissioning step
-  if (step < MAX_STEPS) slots.push(commissionSlot(profile, positions, type, step++))
+  if (step < MAX_PHASES) phases.push(commissionPhase(profile, positions, type, step++))
 
-  // New-category grades after entry grade
   const entryNum = type === 'OCS' ? RANK_NUM.O1 : RANK_NUM.W1
   const newCeil = CATEGORY_CEILING[newCat]
   for (let n = entryNum + 1; n <= newCeil; n++) {
-    if (step >= MAX_STEPS) break
+    if (step >= MAX_PHASES) break
     const g = RANK_REVERSE[n]
     if (!g) continue
-    slots.push(gradeSlot(profile, positions, newCat, g, step++))
+    phases.push(gradePhase(profile, positions, newCat, g, step++))
   }
 
-  finalizeTiming(profile, slots)
-  return slots
+  finalizeTiming(profile, phases)
+  return phases
 }
 
-function buildSameCategory(profile: SoldierProfile, positions: Position[]): PlannerSlot[] {
+function buildSameCategory(profile: SoldierProfile, positions: Position[]): PlannerPhase[] {
   const curNum = RANK_NUM[profile.rank] ?? 0
   const targetNum = RANK_NUM[profile.targetRank] ?? curNum
   const ceiling = CATEGORY_CEILING[profile.careerCategory] ?? curNum
 
-  const slots: PlannerSlot[] = []
+  const phases: PlannerPhase[] = []
   let roughYears = 0
   let step = 0
 
@@ -209,48 +243,63 @@ function buildSameCategory(profile: SoldierProfile, positions: Position[]): Plan
     roughYears += step === 0 ? Math.max(0.5, tig - profile.timeInGrade) : tig
     const roughTis = profile.yearsOfService + roughYears
 
-    slots.push(gradeSlot(profile, positions, profile.careerCategory, grade, step++))
+    phases.push(gradePhase(profile, positions, profile.careerCategory, grade, step++))
 
     if (n >= targetNum && roughTis >= 20) break
-    if (step >= MAX_STEPS) break
+    if (step >= MAX_PHASES) break
   }
 
-  finalizeTiming(profile, slots)
-  return slots
+  finalizeTiming(profile, phases)
+  return phases
 }
 
-// ── Timeline computation (responds to user-chosen dwell times) ────────────────
+// ── Picks (positions chosen per phase) ────────────────────────────────────────
+export function getPhasePicks(phase: PlannerPhase, stored: Record<string, Pick[]>): Pick[] {
+  const s = stored[phase.id]
+  if (s && s.length > 0) return s
+  return [{ positionId: phase.suggestedPositionId, dwellYears: phase.defaultDwellYears }]
+}
+
+export function resolvePosition(phase: PlannerPhase, positionId: number | null): ScoredPosition | null {
+  if (positionId == null) return null
+  return phase.options.find(o => o.id === positionId) ?? null
+}
+
+// ── Timeline (responds to picks + dwell) ──────────────────────────────────────
+export interface PhaseTiming {
+  enterYears: number
+  tisYears: number
+  totalDwell: number
+  stints: { enterYears: number; tisYears: number; dwellYears: number; positionId: number | null }[]
+}
+
 export function computeTimeline(
   profile: SoldierProfile,
-  slots: PlannerSlot[],
-  dwell: Record<string, number>
-): Record<string, { enterYears: number; tisYears: number }> {
-  const res: Record<string, { enterYears: number; tisYears: number }> = {}
-  if (slots.length === 0) return res
+  phases: PlannerPhase[],
+  stored: Record<string, Pick[]>
+): Record<string, PhaseTiming> {
+  const res: Record<string, PhaseTiming> = {}
+  if (phases.length === 0) return res
   const r1 = (x: number) => Math.round(x * 10) / 10
-  let acc = slots[0].leadYears
-  for (let i = 0; i < slots.length; i++) {
-    if (i > 0) {
-      const prev = slots[i - 1]
-      acc += dwell[prev.id] ?? prev.defaultDwellYears
+  let clock = phases[0].leadYears
+  for (const phase of phases) {
+    const phaseEnter = clock
+    const picks = getPhasePicks(phase, stored)
+    const stints: PhaseTiming['stints'] = []
+    let total = 0
+    for (const pick of picks) {
+      stints.push({ enterYears: r1(clock), tisYears: r1(profile.yearsOfService + clock), dwellYears: pick.dwellYears, positionId: pick.positionId })
+      clock += pick.dwellYears
+      total += pick.dwellYears
     }
-    res[slots[i].id] = { enterYears: r1(acc), tisYears: r1(profile.yearsOfService + acc) }
+    res[phase.id] = {
+      enterYears: r1(phaseEnter),
+      tisYears: r1(profile.yearsOfService + phaseEnter),
+      totalDwell: r1(total),
+      stints,
+    }
   }
   return res
-}
-
-export function dwellFor(slot: PlannerSlot, dwell: Record<string, number>): number {
-  return dwell[slot.id] ?? slot.defaultDwellYears
-}
-
-// Resolve the position chosen for a slot (or the suggested default)
-export function getSlotSelection(slot: PlannerSlot, selections: Record<string, number>): ScoredPosition | null {
-  const chosenId = selections[slot.id]
-  if (chosenId != null) {
-    const found = slot.options.find(o => o.id === chosenId)
-    if (found) return found
-  }
-  return slot.options.find(o => o.id === slot.suggestedPositionId) ?? slot.options[0] ?? null
 }
 
 // ── Summaries ─────────────────────────────────────────────────────────────────
@@ -263,64 +312,69 @@ export interface PlanSummary {
   pmeRemaining: string[]
   reaches20: boolean
   commissions: boolean
+  totalPositions: number
 }
 
 export function summarizePlan(
   profile: SoldierProfile,
-  slots: PlannerSlot[],
-  dwell: Record<string, number>
+  phases: PlannerPhase[],
+  stored: Record<string, Pick[]>
 ): PlanSummary {
   const currentYear = new Date().getFullYear()
-  const timeline = computeTimeline(profile, slots, dwell)
-  const last = slots[slots.length - 1]
+  const timeline = computeTimeline(profile, phases, stored)
+  const last = phases[phases.length - 1]
   const pmeRemaining = new Set<string>()
   let commissions = false
-  for (const slot of slots) {
-    if (slot.kind === 'commission') commissions = true
-    for (const p of slot.pme) if (!p.alreadyDone) pmeRemaining.add(p.name)
+  let totalPositions = 0
+  for (const phase of phases) {
+    if (phase.kind === 'commission') commissions = true
+    for (const p of phase.pme) if (!p.alreadyDone) pmeRemaining.add(p.name)
+    totalPositions += getPhasePicks(phase, stored).filter(p => p.positionId != null).length
   }
   const lastTl = last ? timeline[last.id] : undefined
-  const tisAtEnd = lastTl ? lastTl.tisYears + dwellFor(last, dwell) : profile.yearsOfService
+  const finalClock = lastTl ? lastTl.enterYears + lastTl.totalDwell : 0
   return {
     startGrade: profile.rank,
     endGrade: last?.grade ?? profile.rank,
     endCategory: last?.category ?? profile.careerCategory,
-    totalYears: lastTl?.enterYears ?? 0,
+    totalYears: Math.round(finalClock * 10) / 10,
     retirementYear: currentYear + Math.max(0, 20 - profile.yearsOfService),
     pmeRemaining: [...pmeRemaining],
-    reaches20: tisAtEnd >= 20,
+    reaches20: profile.yearsOfService + finalClock >= 20,
     commissions,
+    totalPositions,
   }
 }
 
-// Compact text summary of the soldier's self-built plan for the AI context
 export function summarizePlanForAI(
   profile: SoldierProfile,
-  slots: PlannerSlot[],
-  selections: Record<string, number>,
-  dwell: Record<string, number>
+  phases: PlannerPhase[],
+  stored: Record<string, Pick[]>
 ): string {
-  if (slots.length === 0) return ''
+  if (phases.length === 0) return ''
   const currentYear = new Date().getFullYear()
-  const timeline = computeTimeline(profile, slots, dwell)
+  const timeline = computeTimeline(profile, phases, stored)
   const lines: string[] = []
   lines.push(`Now: ${profile.rank} (${profile.yearsOfService} yrs service, ${profile.timeInGrade} yrs TIG)`)
-  for (const slot of slots) {
-    const tl = timeline[slot.id]
-    const estYear = currentYear + Math.round(tl?.enterYears ?? 0)
+  for (const phase of phases) {
+    const tl = timeline[phase.id]
+    const enterYear = currentYear + Math.round(tl?.enterYears ?? 0)
     const tis = Math.round(tl?.tisYears ?? 0)
-    const yearsInPos = dwellFor(slot, dwell)
-    const pmeNeeded = slot.pme.filter(p => !p.alreadyDone).map(p => p.name)
-    const pmeStr = pmeNeeded.length ? ` | complete first: ${pmeNeeded.join(', ')}` : ''
-    if (slot.kind === 'commission') {
-      lines.push(`~${estYear} (TIS ~${tis}yr): COMMISSION via ${slot.commissionType} → ${slot.category} track, pin ${slot.grade}${pmeStr}`)
+    if (phase.kind === 'commission') {
+      lines.push(`~${enterYear} (TIS ~${tis}yr): COMMISSION via ${phase.commissionType} → ${phase.category} track, pin ${phase.grade}`)
     }
-    const sel = getSlotSelection(slot, selections)
-    const posStr = sel
-      ? `${sel.dutyTitle} @ ${sel.unit}, ${sel.city} (${sel.statusType}, fit ${sel.totalScore}/100${sel.commuteMins >= 0 ? `, ${sel.commuteMins}min` : ''})`
-      : 'no specific billet chosen'
-    const label = slot.kind === 'commission' ? `serve as ${slot.grade}` : `${slot.grade}`
-    lines.push(`~${estYear} (TIS ~${tis}yr, plan to stay ~${yearsInPos}yr): ${label} — ${posStr}${slot.kind === 'grade' ? pmeStr : ''}`)
+    const pmeNeeded = phase.pme.filter(p => !p.alreadyDone).map(p => p.name)
+    const pmeStr = pmeNeeded.length ? ` [complete first: ${pmeNeeded.join(', ')}]` : ''
+    lines.push(`${phase.grade} — ${phase.gradeName}${pmeStr}:`)
+    const picks = getPhasePicks(phase, stored)
+    picks.forEach((pick, i) => {
+      const pos = resolvePosition(phase, pick.positionId)
+      const yr = currentYear + Math.round(tl?.stints[i]?.enterYears ?? 0)
+      const posStr = pos
+        ? `${pos.dutyTitle} @ ${pos.unit}, ${pos.city} (${pos.statusType}, fit ${pos.totalScore}/100${pos.commuteMins >= 0 ? `, ${pos.commuteMins}min` : ''})`
+        : 'open billet (TBD)'
+      lines.push(`   ~${yr}: ${posStr} — stay ~${pick.dwellYears}yr`)
+    })
   }
   return lines.join('\n')
 }

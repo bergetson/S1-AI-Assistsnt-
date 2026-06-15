@@ -62,9 +62,9 @@ export default function CareerBriefPage() {
       <div className="max-w-4xl mx-auto mb-4 flex items-center justify-between print:hidden">
         <h1 className="text-xl font-bold text-gray-700">Career Brief</h1>
         <div className="flex gap-3">
-          <Link href="/career-path"
+          <Link href="/planner"
             className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
-            ← Career Path
+            ← Career Planner
           </Link>
           <button
             onClick={() => window.print()}

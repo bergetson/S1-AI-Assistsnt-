@@ -8,12 +8,10 @@ const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'My Profile', href: '/profile' },
   { label: 'Matches', href: '/matches' },
-  { label: 'Career Path', href: '/career-path' },
-  { label: 'Planner', href: '/planner' },
+  { label: 'Career Planner', href: '/planner' },
   { label: 'Career Brief', href: '/career-brief' },
   { label: 'MOS Reclass', href: '/reclassification' },
   { label: 'Commute', href: '/commute' },
-  { label: 'Timeline', href: '/timeline' },
   { label: 'Counseling', href: '/counseling' },
   { label: 'Ask Steeves', href: '/ai-mentor' },
 ];

@@ -5,7 +5,7 @@ import { useProfileStore } from '@/lib/store'
 import { usePlannerStore } from '@/lib/plannerStore'
 import { positions } from '@/lib/data/positions'
 import { scoreAllPositions, getPmeGaps } from '@/lib/scoring'
-import { buildPlannerSlots, summarizePlanForAI } from '@/lib/careerPlanner'
+import { buildPlannerPhases, summarizePlanForAI } from '@/lib/careerPlanner'
 import { buildSystemPrompt, buildFullMessage, queryAskSage, getStoredCredentials, setStoredCredentials } from '@/lib/asksage'
 import { queryClaude, getStoredClaudeKey, setStoredClaudeKey } from '@/lib/claude'
 import Link from 'next/link'
@@ -97,11 +97,11 @@ export default function AiMentorPage() {
     setMessages(prev => [...prev, assistantMsg])
 
     try {
-      const plannerSlots = buildPlannerSlots(profile, positions, {
+      const plannerPhases = buildPlannerPhases(profile, positions, {
         track: planner.track,
         commissionAfterGrade: planner.commissionAfterGrade || profile.rank,
       })
-      const planSummary = summarizePlanForAI(profile, plannerSlots, planner.selections, planner.dwell)
+      const planSummary = summarizePlanForAI(profile, plannerPhases, planner.phasePicks)
       const systemPrompt = buildSystemPrompt(profile, topMatches, planSummary)
       const history = newMessages.map(m => ({ role: m.role, content: m.content }))
 
