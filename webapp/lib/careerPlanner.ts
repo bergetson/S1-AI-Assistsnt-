@@ -77,6 +77,7 @@ export interface PlannerPhase {
   options: ScoredPosition[]
   suggestedPositionId: number | null
   commissionType?: 'OCS' | 'WOCS'
+  isCurrent?: boolean        // true only for the soldier's current grade phase
 }
 
 // ── Builders ──────────────────────────────────────────────────────────────────
@@ -166,16 +167,53 @@ function commissionPhase(profile: SoldierProfile, positions: Position[], type: '
   }
 }
 
+// Builds the interactive phase for the soldier's current grade (the "NOW" phase).
+function buildCurrentPhase(profile: SoldierProfile, positions: Position[]): PlannerPhase {
+  const grade = profile.rank
+  const category = profile.careerCategory
+  const options = buildOptions(profile, positions, category, grade)
+  const info = roleInfo(grade)
+  const nextGradeNum = (RANK_NUM[grade] ?? 0) + 1
+  const nextGrade = RANK_REVERSE[nextGradeNum]
+  const nextGate = nextGrade ? PROMOTION_GATES[nextGrade] : undefined
+  // Show REMAINING time at this grade (subtract time already served)
+  const remainingTypical = nextGate ? Math.max(0, nextGate.typicalTig - profile.timeInGrade) : 3
+  const remainingMin = nextGate ? Math.max(0, nextGate.minTig - profile.timeInGrade) : 0
+  return {
+    id: `phase-current-${grade}`,
+    kind: 'grade',
+    category,
+    grade,
+    gradeName: info.name,
+    role: info.role,
+    focus: info.focus,
+    stepIndex: 0,
+    leadYears: 0,
+    nextTypicalTig: remainingTypical,
+    nextMinTig: remainingMin,
+    defaultDwellYears: Math.min(8, Math.max(MIN_DWELL, remainingTypical)),
+    minDwellYears: MIN_DWELL,
+    pme: gatePme(profile, grade),
+    options,
+    suggestedPositionId: options[0]?.id ?? null,
+    isCurrent: true,
+  }
+}
+
 function finalizeTiming(profile: SoldierProfile, phases: PlannerPhase[]): void {
   if (phases.length === 0) return
   const first = phases[0]
-  if (first.kind === 'commission') {
+  if (first.isCurrent) {
+    first.leadYears = 0  // already at this grade
+    // nextTypicalTig/nextMinTig/defaultDwellYears already set in buildCurrentPhase
+  } else if (first.kind === 'commission') {
     first.leadYears = 1.0
   } else {
     const tig = PROMOTION_GATES[first.grade]?.typicalTig ?? 2
     first.leadYears = Math.max(0.5, tig - profile.timeInGrade)
   }
   for (let i = 0; i < phases.length; i++) {
+    if (phases[i].isCurrent) continue  // already initialized correctly
     const next = phases[i + 1]
     const nextGate = next ? PROMOTION_GATES[next.grade] : undefined
     phases[i].nextTypicalTig = nextGate?.typicalTig ?? 0
@@ -201,8 +239,8 @@ export function buildPlannerPhases(
   const newCat: CareerCategory = type === 'OCS' ? 'Officer' : 'Warrant'
   const curNum = RANK_NUM[profile.rank] ?? 0
   const commissionAfterNum = RANK_NUM[opts.commissionAfterGrade ?? profile.rank] ?? curNum
-  const phases: PlannerPhase[] = []
-  let step = 0
+  const phases: PlannerPhase[] = [buildCurrentPhase(profile, positions)]
+  let step = 1
 
   const eCeil = CATEGORY_CEILING.Enlisted
   for (let n = curNum + 1; n <= Math.min(commissionAfterNum, eCeil); n++) {
@@ -232,15 +270,17 @@ function buildSameCategory(profile: SoldierProfile, positions: Position[]): Plan
   const targetNum = RANK_NUM[profile.targetRank] ?? curNum
   const ceiling = CATEGORY_CEILING[profile.careerCategory] ?? curNum
 
-  const phases: PlannerPhase[] = []
+  // Always start with the current grade so the soldier can plan positions they'll
+  // hold NOW before earning the next promotion.
+  const phases: PlannerPhase[] = [buildCurrentPhase(profile, positions)]
   let roughYears = 0
-  let step = 0
+  let step = 1  // current-grade phase takes stepIndex 0
 
   for (let n = curNum + 1; n <= ceiling; n++) {
     const grade = RANK_REVERSE[n]
     if (!grade) continue
     const tig = PROMOTION_GATES[grade]?.typicalTig ?? 2
-    roughYears += step === 0 ? Math.max(0.5, tig - profile.timeInGrade) : tig
+    roughYears += step === 1 ? Math.max(0.5, tig - profile.timeInGrade) : tig
     const roughTis = profile.yearsOfService + roughYears
 
     phases.push(gradePhase(profile, positions, profile.careerCategory, grade, step++))

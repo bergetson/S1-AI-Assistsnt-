@@ -108,14 +108,6 @@ const FEATURES = [
     badge: 'New',
   },
   {
-    href: '/career-brief',
-    icon: '🖨️',
-    title: 'Printable Career Brief',
-    desc: 'Generate a professional one-page career brief: promotion assessment, PME checklist, top position matches, and goal statements. Print or save as PDF.',
-    bg: 'from-violet-700 to-violet-900',
-    badge: 'New',
-  },
-  {
     href: '/reclassification',
     icon: '🔄',
     title: 'MOS Reclassification',
@@ -416,9 +408,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <div className="text-amber-600 text-xs font-bold tracking-widest uppercase mb-3">Everything You Need</div>
-            <h2 className="text-4xl font-extrabold text-gray-900">Eight tools. One system.</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900">Seven tools. One system.</h2>
             <p className="text-gray-500 mt-3 text-lg max-w-2xl mx-auto">
-              From building your profile to printing your career brief — Steeves handles the full career planning cycle.
+              From building your profile to mapping your next 20 years — Steeves handles the full career planning cycle.
             </p>
           </div>
 

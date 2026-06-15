@@ -79,7 +79,8 @@ export default function PlannerPage() {
     )
   }
 
-  const atCeiling = phases.length === 0
+  // atCeiling = no future (non-current) phases exist (e.g., already at E9/W5/O6)
+  const atCeiling = phases.filter(p => !p.isCurrent).length === 0
   const commissionGradeOptionsRaw = ENLISTED_RANKS.filter(r => (RANK_NUM[r] ?? 0) >= (RANK_NUM[profile.rank] ?? 0))
   const commissionGradeOptions = commissionGradeOptionsRaw.length ? commissionGradeOptionsRaw : [profile.rank]
 
@@ -206,49 +207,39 @@ export default function PlannerPage() {
       {/* Timeline */}
       <div className="px-8 py-6">
         <div className="max-w-4xl mx-auto">
-          {atCeiling ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-600">
-              You&apos;re at the top of the {profile.careerCategory.toLowerCase()} grade structure ({profile.rank}).
-              Focus on capstone assignments and mentoring. Explore lateral moves on the{' '}
-              <Link href="/matches" className="underline text-green-700">Matches</Link> page.
-            </div>
-          ) : (
-            <div className="relative">
-              <div className="absolute left-[22px] top-0 bottom-0 w-0.5 bg-gray-200" />
-              <div className="space-y-4">
-                {/* NOW node */}
+          <div className="relative">
+            <div className="absolute left-[22px] top-0 bottom-0 w-0.5 bg-gray-200" />
+            <div className="space-y-4">
+              {/* All phases (first is always the current grade) */}
+              {phases.map(phase => (
+                <PhaseCard
+                  key={phase.id}
+                  phase={phase}
+                  timing={timeline[phase.id]}
+                  picks={getPhasePicks(phase, phasePicks)}
+                  openSwap={openSwap}
+                  setOpenSwap={setOpenSwap}
+                  onPick={(i, posId) => updatePick(phase, i, { positionId: posId })}
+                  onDwell={(i, y) => updatePick(phase, i, { dwellYears: y })}
+                  onAdd={() => addPosition(phase)}
+                  onRemove={(i) => removePosition(phase, i)}
+                />
+              ))}
+
+              {/* Horizon / ceiling node */}
+              {atCeiling ? (
                 <div className="relative flex gap-5 items-start">
-                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-xl z-10 border-2 border-white shadow bg-green-600">📍</div>
-                  <div className="flex-1 rounded-xl border border-green-300 bg-green-50 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-xs px-2 py-0.5 rounded font-semibold bg-green-100 text-green-800">NOW</span>
-                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono font-bold">{profile.rank}</span>
-                    </div>
-                    <h3 className="font-bold text-base text-green-900">{profile.dutyTitle || 'Current Position'}</h3>
+                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-xl z-10 border-2 border-white shadow bg-gray-400">🏔</div>
+                  <div className="flex-1 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <h3 className="font-bold text-base text-gray-800">Top of the Grade Structure</h3>
                     <p className="text-sm text-gray-600 mt-1">
-                      {profile.unitName || 'Current unit'} · {profile.unitCity || profile.homeCity} ·{' '}
-                      {profile.yearsOfService} yrs service, {profile.timeInGrade} yrs TIG
+                      You&apos;re at {profile.rank} — the ceiling for {profile.careerCategory.toLowerCase()} soldiers.
+                      Focus on capstone assignments and mentoring. Explore lateral moves on the{' '}
+                      <Link href="/matches" className="underline text-green-700">Matches</Link> page.
                     </p>
                   </div>
                 </div>
-
-                {/* Phases */}
-                {phases.map(phase => (
-                  <PhaseCard
-                    key={phase.id}
-                    phase={phase}
-                    timing={timeline[phase.id]}
-                    picks={getPhasePicks(phase, phasePicks)}
-                    openSwap={openSwap}
-                    setOpenSwap={setOpenSwap}
-                    onPick={(i, posId) => updatePick(phase, i, { positionId: posId })}
-                    onDwell={(i, y) => updatePick(phase, i, { dwellYears: y })}
-                    onAdd={() => addPosition(phase)}
-                    onRemove={(i) => removePosition(phase, i)}
-                  />
-                ))}
-
-                {/* Horizon */}
+              ) : (
                 <div className="relative flex gap-5 items-start">
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-xl z-10 border-2 border-white shadow bg-amber-500">🏁</div>
                   <div className="flex-1 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
@@ -261,9 +252,9 @@ export default function PlannerPage() {
                     </p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
             <strong>How to use this:</strong> At each grade you can line up several jobs (for example, as a CPT:
@@ -292,6 +283,7 @@ function PhaseCard({
   onRemove: (index: number) => void
 }) {
   const isCommission = phase.kind === 'commission'
+  const isCurrent = phase.isCurrent === true
   const enterYear = CURRENT_YEAR + Math.round(timing?.enterYears ?? 0)
   const tisYears = Math.round(timing?.tisYears ?? 0)
   const totalDwell = timing?.totalDwell ?? 0
@@ -300,17 +292,21 @@ function PhaseCard({
   return (
     <div className="relative flex gap-5 items-start">
       <div className={cn('w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-xl z-10 border-2 border-white shadow',
-        isCommission ? 'bg-violet-500' : 'bg-blue-400')}>
-        {isCommission ? '🎓' : '⭐'}
+        isCurrent ? 'bg-green-600' : isCommission ? 'bg-violet-500' : 'bg-blue-400')}>
+        {isCurrent ? '📍' : isCommission ? '🎓' : '⭐'}
       </div>
 
-      <div className={cn('flex-1 rounded-xl border p-4 shadow-sm', isCommission ? 'border-violet-200 bg-violet-50' : 'border-gray-200 bg-white')}>
+      <div className={cn('flex-1 rounded-xl border p-4 shadow-sm',
+        isCurrent ? 'border-green-300 bg-green-50' : isCommission ? 'border-violet-200 bg-violet-50' : 'border-gray-200 bg-white')}>
         {/* Header */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className={cn('text-xs px-2 py-0.5 rounded font-semibold', isCommission ? 'bg-violet-100 text-violet-700' : 'bg-blue-50 text-blue-700')}>~{enterYear}</span>
+          <span className={cn('text-xs px-2 py-0.5 rounded font-semibold',
+            isCurrent ? 'bg-green-600 text-white' : isCommission ? 'bg-violet-100 text-violet-700' : 'bg-blue-50 text-blue-700')}>
+            {isCurrent ? 'NOW' : `~${enterYear}`}
+          </span>
           <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono font-bold">{phase.grade}</span>
-          <span className="font-bold text-gray-900 text-base">{phase.gradeName}</span>
-          <span className="text-xs text-gray-400">est. TIS ~{tisYears} yr</span>
+          <span className={cn('font-bold text-base', isCurrent ? 'text-green-900' : 'text-gray-900')}>{phase.gradeName}</span>
+          <span className="text-xs text-gray-400">{isCurrent ? `${tisYears} yrs TIS` : `est. TIS ~${tisYears} yr`}</span>
           {isCommission && <span className="text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-semibold">{phase.commissionType} → {phase.category}</span>}
         </div>
 
@@ -340,9 +336,14 @@ function PhaseCard({
 
         {/* Time-at-grade summary */}
         <div className="mt-3 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-gray-600">Planned at this grade: <strong>~{totalDwell} yr</strong> across {picks.length} job{picks.length > 1 ? 's' : ''}</span>
+          <span className="text-gray-600">
+            {isCurrent ? 'Remaining time here: ' : 'Planned at this grade: '}
+            <strong>~{totalDwell} yr</strong> across {picks.length} job{picks.length > 1 ? 's' : ''}
+          </span>
           {phase.nextTypicalTig > 0 && (
-            <span className="text-gray-400">typical ~{phase.nextTypicalTig} yr before the next board</span>
+            <span className="text-gray-400">
+              {isCurrent ? `~${phase.nextTypicalTig} yr remaining before typical next board` : `typical ~${phase.nextTypicalTig} yr before the next board`}
+            </span>
           )}
           {belowMin && (
             <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
@@ -461,7 +462,7 @@ function PhaseCard({
         {phase.options.length > 0 && (
           <button onClick={onAdd}
             className="mt-3 text-xs font-medium text-green-700 hover:text-green-800 border border-dashed border-green-300 rounded-lg px-3 py-1.5 hover:bg-green-50 transition">
-            + Add another position at {phase.grade}
+            + Add another {isCurrent ? 'current' : ''} position at {phase.grade}
           </button>
         )}
       </div>
