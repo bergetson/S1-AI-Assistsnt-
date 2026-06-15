@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useProfileStore } from '@/lib/store'
+import { usePlannerStore } from '@/lib/plannerStore'
 import { positions } from '@/lib/data/positions'
 import { scoreAllPositions, getPmeGaps } from '@/lib/scoring'
+import { buildPlannerSlots, summarizePlanForAI } from '@/lib/careerPlanner'
 import { buildSystemPrompt, buildFullMessage, queryAskSage, getStoredCredentials, setStoredCredentials } from '@/lib/asksage'
 import { queryClaude, getStoredClaudeKey, setStoredClaudeKey } from '@/lib/claude'
 import Link from 'next/link'
@@ -27,6 +29,7 @@ const STARTER_PROMPTS = [
 
 export default function AiMentorPage() {
   const { profile, profileComplete } = useProfileStore()
+  const planner = usePlannerStore()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -94,7 +97,12 @@ export default function AiMentorPage() {
     setMessages(prev => [...prev, assistantMsg])
 
     try {
-      const systemPrompt = buildSystemPrompt(profile, topMatches)
+      const plannerSlots = buildPlannerSlots(profile, positions, {
+        track: planner.track,
+        commissionAfterGrade: planner.commissionAfterGrade || profile.rank,
+      })
+      const planSummary = summarizePlanForAI(profile, plannerSlots, planner.selections, planner.dwell)
+      const systemPrompt = buildSystemPrompt(profile, topMatches, planSummary)
       const history = newMessages.map(m => ({ role: m.role, content: m.content }))
 
       let reply: string

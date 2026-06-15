@@ -105,6 +105,14 @@ const FEATURES = [
     title: 'Career Path Sequencer',
     desc: 'Step-by-step roadmap from your current rank to your target grade. PME gates, promotion milestones, and assignment guidance — sequenced and dated.',
     bg: 'from-teal-600 to-teal-900',
+    badge: null,
+  },
+  {
+    href: '/planner',
+    icon: '🧭',
+    title: 'Career Planner',
+    desc: 'Build your own path to 20 years and beyond. Swap real positions in and out at each grade, set how long you stay, layer in schools, and branch into the officer or warrant track via OCS/WOCS.',
+    bg: 'from-emerald-600 to-emerald-900',
     badge: 'New',
   },
   {
@@ -424,7 +432,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <div className="text-amber-600 text-xs font-bold tracking-widest uppercase mb-3">Everything You Need</div>
-            <h2 className="text-4xl font-extrabold text-gray-900">Nine tools. One system.</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900">Ten tools. One system.</h2>
             <p className="text-gray-500 mt-3 text-lg max-w-2xl mx-auto">
               From building your profile to printing your career brief — Steeves handles the full career planning cycle.
             </p>

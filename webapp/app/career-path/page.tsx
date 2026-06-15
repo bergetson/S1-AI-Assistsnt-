@@ -75,10 +75,10 @@ export default function CareerPathPage() {
               className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 font-medium">
               🖨️ Career Brief
             </Link>
-            <Link href="/matches"
+            <Link href="/planner"
               className="px-4 py-2 rounded-lg text-sm text-white font-medium"
               style={{ backgroundColor: '#1B4F2A' }}>
-              🎯 View Matches
+              🧭 Customize in Planner
             </Link>
           </div>
         </div>

@@ -18,7 +18,7 @@ ${blockerStr}
   Reg note: ${gate.notes}`
 }
 
-export function buildSystemPrompt(profile: SoldierProfile, topMatches: ScoredPosition[]): string {
+export function buildSystemPrompt(profile: SoldierProfile, topMatches: ScoredPosition[], planSummary?: string): string {
   const matchSummary = topMatches.slice(0, 10).map(p =>
     `  - ${p.grade} ${p.dutyTitle} @ ${p.unit}, ${p.city} | ${p.totalScore}/100 | ${p.matchLabel} | ${p.commuteMins >= 0 ? p.commuteMins + ' min drive' : 'commute unknown'} | ${p.vacancyStatus}${p.isCommandOrKD ? ' | KD Position' : ''}`
   ).join('\n')
@@ -91,7 +91,13 @@ ${(() => {
 
 == TOP MATCHED POSITIONS ==
 ${matchSummary || '(Profile not complete enough to score positions)'}
-
+${planSummary ? `
+== SOLDIER'S SELF-BUILT CAREER PLAN (from the Planner) ==
+The Soldier has mapped out this position-by-position plan. Treat it as their stated intent. Pressure-test
+the timing, PME sequencing, and whether the chosen billets actually set them up for the next promotion.
+If they branch via OCS/WOCS, sanity-check eligibility and timing for that path.
+${planSummary}
+` : ''}
 == ARMY NATIONAL GUARD PROMOTION TIMELINES (AR 600-8-19 / AR 135-155 / NGR 600-101) ==
 Use these when giving promotion advice. ARNG-specific; Active Duty timelines differ.
 
