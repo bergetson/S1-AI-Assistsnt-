@@ -38,7 +38,8 @@ const ROLE_INFO: Record<string, { name: string; role: string; focus: string }> =
   O6: { name: 'Colonel (COL)', role: 'Brigade Commander / State HQ', focus: 'Brigade command or senior state HQ leadership.' },
 }
 
-const MAX_PHASES = 7
+// One slot is now the current grade, so allow 8 total to keep ~7 future grades visible.
+const MAX_PHASES = 8
 const OPTIONS_PER_SLOT = 8
 const MIN_DWELL = 1.5
 
@@ -173,12 +174,17 @@ function buildCurrentPhase(profile: SoldierProfile, positions: Position[]): Plan
   const category = profile.careerCategory
   const options = buildOptions(profile, positions, category, grade)
   const info = roleInfo(grade)
-  const nextGradeNum = (RANK_NUM[grade] ?? 0) + 1
-  const nextGrade = RANK_REVERSE[nextGradeNum]
+  // The next grade only exists within the SAME category. At the category ceiling
+  // (E9 / W5 / O6) there is no next promotion, so don't show a bogus next-board time.
+  const curNum = RANK_NUM[grade] ?? 0
+  const ceiling = CATEGORY_CEILING[category] ?? curNum
+  const nextGrade = curNum < ceiling ? RANK_REVERSE[curNum + 1] : undefined
   const nextGate = nextGrade ? PROMOTION_GATES[nextGrade] : undefined
-  // Show REMAINING time at this grade (subtract time already served)
-  const remainingTypical = nextGate ? Math.max(0, nextGate.typicalTig - profile.timeInGrade) : 3
+  // Show REMAINING time at this grade (typical TIG to the next board, minus time already served)
+  const remainingTypical = nextGate ? Math.max(0, nextGate.typicalTig - profile.timeInGrade) : 0
   const remainingMin = nextGate ? Math.max(0, nextGate.minTig - profile.timeInGrade) : 0
+  // At the ceiling, default to a normal capstone tour length; otherwise the remaining TIG.
+  const defaultDwell = nextGate ? Math.min(8, Math.max(MIN_DWELL, remainingTypical)) : 3
   return {
     id: `phase-current-${grade}`,
     kind: 'grade',
@@ -191,7 +197,7 @@ function buildCurrentPhase(profile: SoldierProfile, positions: Position[]): Plan
     leadYears: 0,
     nextTypicalTig: remainingTypical,
     nextMinTig: remainingMin,
-    defaultDwellYears: Math.min(8, Math.max(MIN_DWELL, remainingTypical)),
+    defaultDwellYears: defaultDwell,
     minDwellYears: MIN_DWELL,
     pme: gatePme(profile, grade),
     options,

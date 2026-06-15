@@ -18,7 +18,6 @@ import {
   type Pick,
   type PhaseTiming,
 } from '@/lib/careerPlanner'
-import type { ScoredPosition } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const CURRENT_YEAR = new Date().getFullYear()

@@ -48,11 +48,14 @@ For local dev, `GITHUB_PAGES` is unset, so `basePath` is empty and the dev serve
 |-------|---------|
 | `/` | Landing / feature overview |
 | `/profile` | Soldier profile input form |
-| `/matches` | Scored position list with filters (city, match level, vacancy status, status type) |
+| `/matches` | Scored position list with filters (city, match level, vacancy status, status type); per-card action plan + gap analysis |
+| `/planner` | Interactive career planner — current grade + future grades, multiple positions per grade, dwell time, PME, OCS/WOCS branching |
+| `/reclassification` | MOS reclass pathways (ASVAB, school length, MTARNG slot counts) |
 | `/commute` | Drive-time table for all duty stations |
-| `/timeline` | Visual career pathway by category |
-| `/counseling` | Print-ready counseling sheet |
-| `/ai-mentor` | Claude / Ask Sage chat with full profile context |
+| `/counseling` | Print-ready counseling sheet (now includes the self-built career plan) |
+| `/ai-mentor` | Claude / Ask Sage chat with full profile + plan context |
+
+Redirect stubs (consolidated into `/planner`): `/career-path`, `/timeline`. Removed (redirects to `/matches`): `/career-brief`. The planner engine lives in `lib/careerPlanner.ts`; planner state in `lib/plannerStore.ts` (localStorage `mtarng-planner`).
 
 ### Adding positions
 

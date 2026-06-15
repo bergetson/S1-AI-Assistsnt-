@@ -2,9 +2,22 @@
 
 import { useRef } from 'react'
 import { useProfileStore } from '@/lib/store'
+import { usePlannerStore } from '@/lib/plannerStore'
 import { positions } from '@/lib/data/positions'
 import { scoreAllPositions, getPmeGaps } from '@/lib/scoring'
+import {
+  buildPlannerPhases,
+  computeTimeline,
+  getPhasePicks,
+  resolvePosition,
+} from '@/lib/careerPlanner'
 import Link from 'next/link'
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+function dwellLabel(y: number): string {
+  return y === 1.5 ? '18 mo' : `${y} yr`
+}
 
 const PME_ITEMS = [
   { key: 'blcComplete',  label: 'BLC',  cat: 'Enlisted' },
@@ -54,11 +67,40 @@ function ScoreBar({ score }: { score: number }) {
 
 export default function CounselingPage() {
   const { profile, profileComplete } = useProfileStore()
+  const { phasePicks, track, commissionAfterGrade } = usePlannerStore()
   const printRef = useRef<HTMLDivElement>(null)
   const scored = scoreAllPositions(profile, positions)
   const top5 = scored.slice(0, 5)
   const pmeGaps = getPmeGaps(profile)
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  // Self-built career plan (from the Career Planner) — flattened to one row per planned job.
+  const plannerPhases = buildPlannerPhases(profile, positions, {
+    track,
+    commissionAfterGrade: commissionAfterGrade || profile.rank,
+  })
+  const plannerTimeline = computeTimeline(profile, plannerPhases, phasePicks)
+  const planRows = plannerPhases.flatMap(phase => {
+    const tl = plannerTimeline[phase.id]
+    const picks = getPhasePicks(phase, phasePicks)
+    const schools = phase.pme.filter(p => !p.alreadyDone).map(p => p.name)
+    return picks.map((pick, i) => {
+      const pos = resolvePosition(phase, pick.positionId)
+      const year = CURRENT_YEAR + Math.round(tl?.stints[i]?.enterYears ?? 0)
+      return {
+        key: `${phase.id}:${i}`,
+        isCurrent: phase.isCurrent === true,
+        isCommission: phase.kind === 'commission',
+        commissionType: phase.commissionType,
+        grade: phase.grade,
+        year,
+        position: pos ? `${pos.dutyTitle} — ${pos.unit}, ${pos.city}` : 'Open billet (to be identified)',
+        statusType: pos?.statusType ?? '',
+        dwell: pick.dwellYears,
+        schools: i === 0 ? schools : [],
+      }
+    })
+  })
 
   function handlePrint() {
     window.print()
@@ -266,10 +308,59 @@ export default function CounselingPage() {
             </div>
           </section>
 
-          {/* ── SECTION 7: Discussion Points ── */}
+          {/* ── SECTION 7: Self-Built Career Plan ── */}
+          <section>
+            <h2 className="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded mb-2" style={{ backgroundColor: '#1B4F2A', color: 'white' }}>
+              Section 7 — Career Plan (Soldier&apos;s Self-Built Path)
+            </h2>
+            <p className="text-xs text-gray-500 mb-2">
+              Grade-by-grade plan from the Career Planner — positions the Soldier intends to pursue, time at each, and
+              schools to complete before each promotion. Use this to align expectations with the senior rater.
+            </p>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  {['When', 'Grade', 'Planned Position', 'Time', 'Schools to Finish First'].map(h => (
+                    <th key={h} className="border border-gray-300 px-2 py-1 text-left font-bold text-gray-600">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {planRows.map((row, i) => (
+                  <tr key={row.key} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="border border-gray-300 px-2 py-1 whitespace-nowrap font-medium">
+                      {row.isCurrent ? 'NOW' : `~${row.year}`}
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1 font-bold whitespace-nowrap">
+                      {row.grade}
+                      {row.isCommission && (
+                        <span className="ml-1 font-normal text-violet-700">({row.commissionType})</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      {row.position}
+                      {row.statusType && <span className="text-gray-500"> · {row.statusType}</span>}
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1 whitespace-nowrap text-center">{dwellLabel(row.dwell)}</td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      {row.schools.length === 0
+                        ? <span className="text-green-700">—</span>
+                        : <span className="text-orange-700 font-medium">{row.schools.join(', ')}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="no-print text-xs text-gray-400 mt-1">
+              Adjust this plan on the{' '}
+              <Link href="/planner" className="underline text-green-700">Career Planner</Link>.
+            </p>
+          </section>
+
+          {/* ── SECTION 8: Discussion Points ── */}
           <section>
             <h2 className="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded mb-2" style={{ backgroundColor: '#1F3864', color: 'white' }}>
-              Section 7 — Counseling Discussion Points
+              Section 8 — Counseling Discussion Points
             </h2>
             <ol className="space-y-1">
               {DISCUSSION_POINTS.map((pt, i) => (
@@ -284,7 +375,7 @@ export default function CounselingPage() {
           {/* ── SIGNATURES ── */}
           <section>
             <h2 className="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded mb-3" style={{ backgroundColor: '#C8A96E', color: '#1a1a1a' }}>
-              Section 8 — Signatures
+              Section 9 — Signatures
             </h2>
             <div className="grid grid-cols-3 gap-6">
               {['Soldier', 'Mentor / Rater', 'Senior Rater'].map(role => (

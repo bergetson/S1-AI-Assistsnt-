@@ -12,71 +12,107 @@ function Star({ className = '' }: { className?: string }) {
   )
 }
 
-/* ── S1 Shield (custom, matches the green/gold palette) ──────────────────── */
+/* ── S1 Branch Crest ──────────────────────────────────────────────────────
+   Built on the authentic Adjutant General's Corps branch insignia (S1 =
+   personnel = AG Corps): the shield from the U.S. Coat of Arms — a blue chief
+   bearing 13 silver stars over 13 vertical stripes (7 silver, 6 red) — set in
+   a Montana National Guard gold shield with an "S1" honor scroll.            */
+function star(cx: number, cy: number, outer: number, inner: number): string {
+  const pts: string[] = []
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    pts.push(`${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`)
+  }
+  return `M${pts.join(' L')} Z`
+}
+
 function BranchCrest({ size = 90 }: { size?: number }) {
+  // Inner shield field (the AG / U.S. shield), inset from the gold border.
+  const fieldPath = 'M50 11 L86 21 V54 C86 78 70 94 50 102 C30 94 14 78 14 54 V21 Z'
+  // 13 vertical stripes across the field width (x: 14 → 86). Odd indices are red.
+  const stripeX0 = 14, stripeW = (86 - 14) / 13
+  const redStripes = Array.from({ length: 13 }, (_, i) => i).filter(i => i % 2 === 1)
+  // Blue chief with 13 silver stars: 1 large center + 12 in a ring (the constellation).
+  const chiefCx = 50, chiefCy = 25
+  const ringStars = Array.from({ length: 12 }, (_, i) => {
+    const a = (i * 2 * Math.PI) / 12 - Math.PI / 2
+    return { x: chiefCx + 11 * Math.cos(a), y: chiefCy + 8 * Math.sin(a) }
+  })
+
   return (
     <svg
       width={size}
-      height={size * 1.15}
-      viewBox="0 0 100 115"
+      height={size * 1.18}
+      viewBox="0 0 100 118"
       className="drop-shadow-2xl"
-      aria-label="Ask Steeves S1 Shield"
+      aria-label="Ask Steeves — S1 / Adjutant General's Corps crest"
       role="img"
     >
       <defs>
         <linearGradient id="shieldGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#e0c080" />
+          <stop offset="0%" stopColor="#e8cb8e" />
           <stop offset="50%" stopColor="#C8A96E" />
           <stop offset="100%" stopColor="#a8854a" />
         </linearGradient>
-        <linearGradient id="shieldGreen" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2a6b3d" />
-          <stop offset="100%" stopColor="#123620" />
+        <linearGradient id="chiefBlue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1c3a73" />
+          <stop offset="100%" stopColor="#0a2350" />
         </linearGradient>
+        <clipPath id="agField">
+          <path d={fieldPath} />
+        </clipPath>
       </defs>
 
-      {/* Outer gold shield */}
+      {/* Outer gold shield + dark rim */}
       <path
-        d="M50 2 L95 14 V52 C95 82 76 102 50 113 C24 102 5 82 5 52 V14 Z"
+        d="M50 2 L95 14 V53 C95 83 76 103 50 114 C24 103 5 83 5 53 V14 Z"
         fill="url(#shieldGold)"
-      />
-      {/* Inner green field */}
-      <path
-        d="M50 9 L88 19.5 V52 C88 78 72 95.5 50 105.5 C28 95.5 12 78 12 52 V19.5 Z"
-        fill="url(#shieldGreen)"
-      />
-      {/* Thin gold inner line */}
-      <path
-        d="M50 14 L83 23.5 V52 C83 75 69 91 50 100 C31 91 17 75 17 52 V23.5 Z"
-        fill="none"
-        stroke="#C8A96E"
-        strokeWidth="1.2"
-        opacity="0.7"
+        stroke="#8a6a38"
+        strokeWidth="1.5"
       />
 
-      {/* Gold star */}
-      <path
-        d="M50 24 L53.3 33.2 L63 33.2 L55.2 39 L58.3 48.2 L50 42.6 L41.7 48.2 L44.8 39 L37 33.2 L46.7 33.2 Z"
-        fill="url(#shieldGold)"
-      />
+      {/* AG / U.S. shield field, clipped to the inner shield shape */}
+      <g clipPath="url(#agField)">
+        {/* white ground (silver stripes) */}
+        <rect x="12" y="9" width="76" height="96" fill="#f4f1e8" />
+        {/* red stripes */}
+        {redStripes.map(i => (
+          <rect key={i} x={stripeX0 + i * stripeW} y="9" width={stripeW} height="96" fill="#b22234" />
+        ))}
+        {/* blue chief */}
+        <rect x="12" y="9" width="76" height="29" fill="url(#chiefBlue)" />
+        {/* 13 silver stars on the chief */}
+        <path d={star(chiefCx, chiefCy, 4.2, 1.7)} fill="#f4f1e8" />
+        {ringStars.map((s, i) => (
+          <path key={i} d={star(s.x, s.y, 1.7, 0.7)} fill="#f4f1e8" />
+        ))}
+      </g>
 
-      {/* S1 lettering */}
-      <text
-        x="50"
-        y="76"
-        textAnchor="middle"
-        fontFamily="Georgia, 'Times New Roman', serif"
-        fontWeight="bold"
-        fontSize="27"
-        fill="url(#shieldGold)"
-        letterSpacing="1"
-      >
-        S1
-      </text>
+      {/* crisp inner border around the field */}
+      <path d={fieldPath} fill="none" stroke="#8a6a38" strokeWidth="1.4" />
 
-      {/* Banner line under S1 */}
-      <line x1="33" y1="84" x2="67" y2="84" stroke="#C8A96E" strokeWidth="1.5" opacity="0.8" />
-      <line x1="38" y1="88.5" x2="62" y2="88.5" stroke="#C8A96E" strokeWidth="1" opacity="0.5" />
+      {/* Honor scroll with S1 across the lower shield */}
+      <g>
+        <path
+          d="M21 84 Q50 78 79 84 L79 98 Q50 104 21 98 Z"
+          fill="url(#shieldGold)"
+          stroke="#8a6a38"
+          strokeWidth="1"
+        />
+        <text
+          x="50"
+          y="95"
+          textAnchor="middle"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fontWeight="bold"
+          fontSize="15"
+          fill="#123620"
+          letterSpacing="2"
+        >
+          S1
+        </text>
+      </g>
     </svg>
   )
 }
