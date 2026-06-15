@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useProfileStore } from '@/lib/store'
 import { getPmeGaps } from '@/lib/scoring'
 import type { CareerCategory } from '@/lib/types'
@@ -486,6 +487,26 @@ export default function TimelinePage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* B2. Interactive planner callout */}
+      <div className="mx-8 mt-6">
+        <Link
+          href="/planner"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 hover:bg-emerald-100 transition"
+        >
+          <span className="text-2xl">🧭</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-emerald-900">
+              New: Build your own path in the interactive Career Planner
+            </div>
+            <div className="text-sm text-emerald-800">
+              Swap real MTARNG positions in and out at each grade, set how long you stay in each one,
+              layer in your schools, and branch into the officer or warrant track via OCS/WOCS.
+            </div>
+          </div>
+          <span className="text-emerald-700 font-semibold whitespace-nowrap">Open Planner →</span>
+        </Link>
       </div>
 
       {/* C. PME Gaps section */}
