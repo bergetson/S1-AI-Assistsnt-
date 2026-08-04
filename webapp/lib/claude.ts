@@ -11,7 +11,8 @@ interface ClaudeContentBlock {
 export async function queryClaude(
   systemPrompt: string,
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  apiKey: string
+  apiKey: string,
+  opts: { maxTokens?: number } = {}
 ): Promise<string> {
   let res: Response
   try {
@@ -25,7 +26,7 @@ export async function queryClaude(
       },
       body: JSON.stringify({
         model: CLAUDE_MODEL,
-        max_tokens: 1024,
+        max_tokens: opts.maxTokens ?? 1024,
         system: systemPrompt,
         messages,
       }),
@@ -44,9 +45,13 @@ export async function queryClaude(
     throw new Error(`Claude API returned an error (${res.status}). Try again in a moment.`)
   }
 
-  const data = await res.json() as { content?: ClaudeContentBlock[] }
+  const data = await res.json() as { content?: ClaudeContentBlock[]; stop_reason?: string }
   const text = data.content?.find(b => b.type === 'text')?.text
-  return text ?? 'No response received from Claude.'
+  if (!text) return 'No response received from Claude.'
+  // Without this the reply just stops mid-sentence and looks like a model failure.
+  return data.stop_reason === 'max_tokens'
+    ? `${text}\n\n_[Response hit the length limit — ask a narrower question for the rest.]_`
+    : text
 }
 
 const KEY_STORAGE = 'claude-api-key'

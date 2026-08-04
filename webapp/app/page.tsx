@@ -175,7 +175,18 @@ const FEATURES = [
     bg: 'from-[#1B4F2A] to-[#0D2614]',
     badge: 'AI Powered',
   },
+  {
+    href: '/command',
+    icon: '🛡️',
+    title: 'Commander View',
+    desc: 'For battalion and brigade commanders: see your whole force, time in grade and position, evaluations, projected losses, and how many promotions you need each year to keep billets filled.',
+    bg: 'from-slate-700 to-slate-900',
+    badge: 'New',
+  },
 ]
+
+/** Spelled-out count so the section heading can never drift from the card list. */
+const COUNT_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven']
 
 /* ── HOW IT WORKS steps ──────────────────────────────────────────────────── */
 const HOW_IT_WORKS = [
@@ -444,9 +455,12 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <div className="text-amber-600 text-xs font-bold tracking-widest uppercase mb-3">Everything You Need</div>
-            <h2 className="text-4xl font-extrabold text-gray-900">Seven tools. One system.</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900">
+              {COUNT_WORDS[FEATURES.length] ?? FEATURES.length} tools. One system.
+            </h2>
             <p className="text-gray-500 mt-3 text-lg max-w-2xl mx-auto">
-              From building your profile to mapping your next 20 years — Steeves handles the full career planning cycle.
+              From a single soldier&apos;s next assignment to a commander&apos;s whole formation — Steeves handles
+              the full career and force management cycle.
             </p>
           </div>
 

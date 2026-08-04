@@ -1,23 +1,98 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useViewModeStore } from '@/lib/viewModeStore';
 
-const navLinks = [
+const soldierLinks = [
   { label: 'Home', href: '/' },
   { label: 'My Profile', href: '/profile' },
   { label: 'Matches', href: '/matches' },
-  { label: 'Career Planner', href: '/planner' },
-  { label: 'MOS Reclass', href: '/reclassification' },
+  { label: 'Planner', href: '/planner' },
+  { label: 'Reclass', href: '/reclassification' },
   { label: 'Commute', href: '/commute' },
   { label: 'Counseling', href: '/counseling' },
   { label: 'Ask Steeves', href: '/ai-mentor' },
 ];
 
+const commanderLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Overview', href: '/command' },
+  { label: 'Roster', href: '/command/roster' },
+  { label: 'Forecast', href: '/command/forecast' },
+  { label: 'Succession', href: '/command/succession' },
+  { label: 'Import Data', href: '/command/import' },
+];
+
+/**
+ * Exact match for '/' and '/command' so the Overview link doesn't stay lit while
+ * you're on /command/roster; prefix match everywhere else.
+ */
+function isLinkActive(href: string, pathname: string): boolean {
+  if (href === '/' || href === '/command') return pathname === href;
+  return pathname.startsWith(href);
+}
+
+function ModeToggle({
+  mode,
+  onSwitch,
+}: {
+  mode: 'soldier' | 'commander';
+  onSwitch: (m: 'soldier' | 'commander') => void;
+}) {
+  return (
+    <div
+      className="inline-flex rounded-lg p-0.5 bg-black/25"
+      role="group"
+      aria-label="Switch between soldier and commander view"
+    >
+      {(
+        [
+          { key: 'soldier', label: 'Soldier', icon: '🎖️' },
+          { key: 'commander', label: 'Commander', icon: '🛡️' },
+        ] as const
+      ).map((m) => {
+        const active = mode === m.key;
+        return (
+          <button
+            key={m.key}
+            onClick={() => onSwitch(m.key)}
+            aria-pressed={active}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold tracking-wide transition-colors duration-150 ${
+              active
+                ? 'text-green-950 shadow'
+                : 'text-gray-300 hover:text-white'
+            }`}
+            style={active ? { backgroundColor: '#C8A96E' } : undefined}
+          >
+            {m.icon} {m.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { mode, setMode } = useViewModeStore();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // The URL is the source of truth while browsing, so deep-linking into /command
+  // shows commander nav even if the stored mode still says 'soldier'.
+  const onCommandRoute = pathname.startsWith('/command');
+  const activeMode = onCommandRoute ? 'commander' : mode;
+  const navLinks = activeMode === 'commander' ? commanderLinks : soldierLinks;
+
+  function switchMode(next: 'soldier' | 'commander') {
+    setMode(next);
+    setMenuOpen(false);
+    // Moving between hats should land somewhere meaningful, not on a dead route.
+    if (next === 'commander') router.push('/command');
+    else if (onCommandRoute) router.push('/');
+  }
 
   return (
     <nav
@@ -42,18 +117,19 @@ export default function Navbar() {
                 Ask Steeves
               </div>
               <div className="text-green-300 text-xs font-medium tracking-wider uppercase">
-                S1 Career Manager · MT ARNG
+                {activeMode === 'commander'
+                  ? 'Force Management · MT ARNG'
+                  : 'S1 Career Manager · MT ARNG'}
               </div>
             </div>
           </Link>
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center space-x-1">
+            <ModeToggle mode={activeMode} onSwitch={switchMode} />
+            <div className="w-px h-6 bg-white/20 mx-2" />
             {navLinks.map((link) => {
-              const isActive =
-                link.href === '/'
-                  ? pathname === '/'
-                  : pathname.startsWith(link.href);
+              const isActive = isLinkActive(link.href, pathname);
               return (
                 <Link
                   key={link.href}
@@ -120,11 +196,11 @@ export default function Navbar() {
           className="md:hidden px-4 pb-4 pt-2 space-y-1"
           style={{ backgroundColor: '#1B4F2A' }}
         >
+          <div className="pb-2 mb-2 border-b border-white/20">
+            <ModeToggle mode={activeMode} onSwitch={switchMode} />
+          </div>
           {navLinks.map((link) => {
-            const isActive =
-              link.href === '/'
-                ? pathname === '/'
-                : pathname.startsWith(link.href);
+            const isActive = isLinkActive(link.href, pathname);
             return (
               <Link
                 key={link.href}

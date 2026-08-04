@@ -57,6 +57,37 @@ For local dev, `GITHUB_PAGES` is unset, so `basePath` is empty and the dev serve
 
 Redirect stubs (consolidated into `/planner`): `/career-path`, `/timeline`. Removed (redirects to `/matches`): `/career-brief`. The planner engine lives in `lib/careerPlanner.ts`; planner state in `lib/plannerStore.ts` (localStorage `mtarng-planner`).
 
+### Commander View (`/command/*`)
+
+A second "hat" for battalion/brigade commanders, separate from the individual-soldier tools. `lib/viewModeStore.ts` (localStorage `mtarng-viewmode`) drives a navbar toggle that swaps the entire nav between the soldier tools and the commander tools; `components/Navbar.tsx` treats the URL as authoritative so deep links into `/command` show commander nav regardless of stored mode.
+
+| Route | Purpose |
+|-------|---------|
+| `/command` | Unit selection + manning dashboard |
+| `/command/roster` | Sortable force roster with TIG/TIP, evals, board eligibility |
+| `/command/forecast` | Attrition projection + promotion requirement by grade |
+| `/command/succession` | Ranked candidates for a billet + anonymized AI analysis |
+| `/command/import` | CSV roster import |
+
+Key modules:
+- `lib/commandTypes.ts` — `RosterSoldier` and analytics result types; `rankLabel()` maps pay grade → rank name
+- `lib/forceAnalytics.ts` — all pure analytics (manning, attrition, promotion forecast, candidate ranking, unit-name resolution and family grouping)
+- `lib/data/retention.ts` — `RETENTION_LIMITS` (RCP / MRD). **Draft values needing S1 verification**, structured like `PROMOTION_GATES`
+- `lib/data/demoRoster.ts` — deterministic synthetic roster (seeded PRNG, no `Math.random`/`Date.now` — a static export would otherwise mismatch on hydration)
+- `lib/commanderAI.ts` — the anonymization boundary and `buildCommanderPrompt()`
+- `lib/rosterImport.ts` — hand-rolled RFC-4180 CSV parser (no new dependency)
+- `lib/commandStore.ts` — roster/formation state (localStorage `mtarng-command`)
+
+**Non-obvious constraints learned from the data:**
+- `uic` is the only reliable join key. The `filled` array sets `unit === uic` (raw codes); `vacant` uses MTOE names. Never render `Position.unit` directly — always `resolveUnitName(uic, nameMap)`.
+- `positions.ts` has **zero AGR billets** (`statusType` is only `M-Day`/`Technician`). AGR is a roster-level attribute; never infer it from `Position.statusType`.
+- 36 of 53 UICs have **zero** `Filled` billets (the `filled` array is a partial extract), so the demo roster populates across all billets at a per-unit fill rate rather than one-per-filled-billet.
+- Occupancy comes from the roster (`vacantBillets()`), not `Position.vacancyStatus`, which goes stale against an imported roster.
+- `RANK_NUM` is contiguous across categories (E9=9, W1=10, O1=15), so never compute the next grade as `RANK_NUM + 1` — use `nextGradeFor(grade, category)`.
+- An ETS is a contract expiring, not a departure. Attrition weights ETS and 20-year eligibility by take-rate and reports statutory (RCP/MRD) losses separately; counting ETS whole made the entire formation "depart" within one contract cycle.
+
+**Privacy:** the roster lives only in `localStorage` and names never reach an AI provider. `lib/commanderAI.ts` swaps names for stable `S-nnn` pseudonyms at the boundary and `rehydrateNames()` maps replies back in the browser. Eval bullets are excluded unless explicitly opted in.
+
 ### Adding positions
 
 Append to the `filled` or `vacant` array in `positions.ts`. Keep each array under ~650 entries or TypeScript hits a union complexity limit. If the array must grow larger, split into more sub-arrays and spread them into the export.
