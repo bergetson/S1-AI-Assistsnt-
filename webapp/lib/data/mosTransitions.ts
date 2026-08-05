@@ -169,10 +169,46 @@ export function getTransitionTo(mos: string): MosTransition | undefined {
   return MOS_TRANSITIONS.find(t => t.toMos === mos)
 }
 
-// Returns count of MTARNG positions in a given MOS from the live positions data
-// (called at runtime, not pre-computed, to avoid circular imports)
-export const MOS_POSITION_COUNTS: Record<string, number> = {
-  '42A': 54, '25B': 21, '25U': 28, '92A': 62, '92Y': 43,
-  '92F': 64, '31B': 38, '68W': 21, '74D': 47, '11B': 91,
-  '79T': 21, '91B': 54,
+// Authorized MTARNG billets per MOS, derived from the live force structure.
+//
+// These were previously hardcoded and had drifted badly against the current
+// MTOE extract (11B read 91 against an actual 378). A soldier weighing a
+// reclassification is looking straight at this number, so it is computed from
+// positions.ts rather than maintained by hand. positions.ts imports only types,
+// so there is no import cycle.
+import { positions } from './positions'
+
+let countsCache: Record<string, number> | null = null
+
+function computeCounts(): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const p of positions) {
+    // Templet / over-strength lines are people, not authorizations.
+    if (p.authorized === false || !p.mos) continue
+    out[p.mos] = (out[p.mos] ?? 0) + 1
+  }
+  return out
+}
+
+/** Authorized billets statewide for one MOS. */
+export function mosPositionCount(mos: string): number {
+  if (!countsCache) countsCache = computeCounts()
+  return countsCache[mos] ?? 0
+}
+
+/**
+ * Proxy kept so existing `MOS_POSITION_COUNTS[mos]` call sites keep working
+ * while the values come from the real force structure.
+ */
+export const MOS_POSITION_COUNTS: Record<string, number> = new Proxy({}, {
+  get: (_t, key: string) => mosPositionCount(key),
+  has: (_t, key: string) => mosPositionCount(String(key)) > 0,
+  ownKeys: () => Object.keys(countsCache ?? (countsCache = computeCounts())),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+}) as Record<string, number>
+
+/** Vacant authorized billets for one MOS — the opening a reclass would target. */
+export function mosVacancyCount(mos: string): number {
+  return positions.filter(
+    p => p.mos === mos && p.authorized !== false && p.vacancyStatus === 'Vacant').length
 }

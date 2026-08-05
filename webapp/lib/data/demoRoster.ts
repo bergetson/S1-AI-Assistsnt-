@@ -8,9 +8,13 @@ import type { RosterSoldier, SrBox, RaterBox, NcoerBox } from '../commandTypes'
 //
 // Determinism matters: this runs during a static export AND in the browser, so a
 // Math.random() anywhere would produce a server/client mismatch and a hydration
-// flash. A seeded PRNG keeps the same 559 people on every render, every build,
+// flash. A seeded PRNG keeps the same population on every render, every build,
 // every machine. For the same reason, dates are anchored to a fixed base year
 // rather than new Date().
+//
+// Note the split: the BILLETS these people occupy are real current MTARNG force
+// structure. Only the people are synthetic, because a real roster carries names
+// and cannot be committed to a public repository.
 
 const DEMO_SEED = 0x5713A9
 const DEMO_BASE_YEAR = 2026

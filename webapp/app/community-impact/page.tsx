@@ -6,7 +6,7 @@ import { aggregateImpact } from '@/lib/communityImpact/calculateImpact'
 import { countyForCity, type ActivationParameters } from '@/lib/communityImpact/types'
 import { buildUnitFamilies } from '@/lib/forceAnalytics'
 import { isCommunityCritical } from '@/lib/civilian/taxonomy'
-import { ImpactBadge, PrototypeNotice, DemoPill } from '@/components/shared/Badges'
+import { ImpactBadge, PrototypeNotice, DemoPill, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +15,7 @@ const sel = 'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:
 const lbl = 'block text-xs font-semibold text-gray-500 uppercase mb-1'
 
 export default function CommunityImpactPage() {
-  const { positions, roster, civilianProfiles, isDemo } = useForceData()
+  const { positions, roster, civilianProfiles, rosterIsDemo, civilianIsSynthetic } = useForceData()
   const [selectedBns, setSelectedBns] = useState<string[]>([])
   const [activation, setActivation] = useState<ActivationParameters>({
     durationDays: 30, noticeDays: 30, activationType: 'State Active Duty',
@@ -68,7 +68,7 @@ export default function CommunityImpactPage() {
         ...summary.byEmployer.slice(0, 40).map(e => ['Employer', e.key, String(e.count)]),
         ...summary.criticalRoleCounts.map(r => ['Critical capability', r.key, String(r.count)]),
       ],
-      isDemo ? 'DEMO DATA — synthetic, not real personnel. Potential community impact estimate only.' : undefined)
+      civilianIsSynthetic ? 'DEMO DATA — civilian capability is synthetic. Potential community impact estimate only.' : undefined)
   }
 
   return (
@@ -148,6 +148,9 @@ export default function CommunityImpactPage() {
 
       <div className="px-8 py-6">
         <div className="max-w-[1400px] mx-auto space-y-5">
+          <DataSourceBanner rosterIsDemo={rosterIsDemo} civilianIsSynthetic={civilianIsSynthetic}
+            positionCount={positions.length} />
+
           {members.length === 0 ? (
             <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-600">
               Select one or more formations above to estimate community impact.
@@ -163,7 +166,7 @@ export default function CommunityImpactPage() {
                     <p className="text-sm text-gray-500">
                       {summary.totalSelected} personnel · {activation.durationDays} days ·{' '}
                       {activation.noticeDays} days notice · {activation.activationType}
-                      {isDemo && <> · <DemoPill /></>}
+                      {(rosterIsDemo || civilianIsSynthetic) && <> · <DemoPill /></>}
                     </p>
                   </div>
                   <ImpactBadge value={summary.level} />

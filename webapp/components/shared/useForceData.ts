@@ -34,13 +34,28 @@ export function useForceData() {
   )
   const civilianProfiles = useMemo(() => civilianFor(activeRoster), [activeRoster])
 
+  const rosterIsDemo = source === 'demo'
+
   return {
     positions,
     roster: activeRoster,
     civilianProfiles,
     source,
     selectedUics,
-    isDemo: source === 'demo',
+
+    /**
+     * The BILLETS are always real current MTARNG force structure. Only the
+     * people and their civilian profiles can be synthetic, so the two are
+     * flagged separately — importing a real roster must not make synthetic
+     * civilian data start rendering as though it were real.
+     */
+    positionsAreReal: true as const,
+    rosterIsDemo,
+    /** No real civilian capability data exists yet; it is generated in all modes. */
+    civilianIsSynthetic: true as const,
+
+    /** Legacy alias — refers to the roster. Prefer the specific flags above. */
+    isDemo: rosterIsDemo,
   }
 }
 

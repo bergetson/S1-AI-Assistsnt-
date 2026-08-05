@@ -394,3 +394,28 @@ describe('provenance', () => {
     expect(demoProvenance().verified).toBe(false)
   })
 })
+
+describe('MOS position counts are derived from real force structure', () => {
+  it('reports counts that match the live positions data', async () => {
+    const { positions } = await import('@/lib/data/positions')
+    const { mosPositionCount, mosVacancyCount } = await import('@/lib/data/mosTransitions')
+    const expected = positions.filter(p => p.mos === '11B' && p.authorized !== false).length
+    expect(mosPositionCount('11B')).toBe(expected)
+    expect(expected).toBeGreaterThan(100)  // guards against the old hardcoded 91
+    expect(mosVacancyCount('11B')).toBeLessThanOrEqual(expected)
+  })
+
+  it('returns zero for an MOS with no billets rather than throwing', async () => {
+    const { mosPositionCount } = await import('@/lib/data/mosTransitions')
+    expect(mosPositionCount('ZZZ')).toBe(0)
+  })
+
+  it('excludes unauthorized templet lines from the count', async () => {
+    const { positions } = await import('@/lib/data/positions')
+    const { mosPositionCount } = await import('@/lib/data/mosTransitions')
+    const withTemplet = positions.filter(p => p.mos === '92Y').length
+    const authorizedOnly = positions.filter(p => p.mos === '92Y' && p.authorized !== false).length
+    expect(mosPositionCount('92Y')).toBe(authorizedOnly)
+    if (withTemplet !== authorizedOnly) expect(mosPositionCount('92Y')).toBeLessThan(withTemplet)
+  })
+})

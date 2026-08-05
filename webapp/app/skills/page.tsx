@@ -6,7 +6,7 @@ import { filterCivilian, countByCategory, countBySubcategory, countByCounty, cou
 import { categoryNames, subcategoriesOf } from '@/lib/civilian/taxonomy'
 import { PROFICIENCY_ORDER, type SkillProficiency, type VerificationStatus } from '@/lib/civilian/types'
 import { countyForCity } from '@/lib/communityImpact/types'
-import { VerificationBadge, DemoPill, PrototypeNotice, MissingDataNote } from '@/components/shared/Badges'
+import { VerificationBadge, DemoPill, PrototypeNotice, MissingDataNote, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
 import { rankLabel } from '@/lib/commandTypes'
 import { cn } from '@/lib/utils'
@@ -16,7 +16,7 @@ const sel = 'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:
 const lbl = 'block text-xs font-semibold text-gray-500 uppercase mb-1'
 
 export default function SkillsExplorerPage() {
-  const { positions, roster, civilianProfiles, isDemo } = useForceData()
+  const { positions, roster, civilianProfiles, rosterIsDemo, civilianIsSynthetic } = useForceData()
   const [f, setF] = useState<CivilianFilter>({})
   const [showFilters, setShowFilters] = useState(true)
 
@@ -57,9 +57,9 @@ export default function SkillsExplorerPage() {
         r.bestVerification,
         r.profile.willingness.useCivilianSkillsOnMission,
         String(r.profile.willingness.maxTravelMiles ?? ''),
-        isDemo ? 'SYNTHETIC DEMO DATA' : r.profile.provenance.source,
+        civilianIsSynthetic ? 'SYNTHETIC DEMO DATA' : r.profile.provenance.source,
       ]),
-      isDemo ? 'DEMO DATA — synthetic, not real personnel' : undefined)
+      civilianIsSynthetic ? 'DEMO DATA — civilian capability is synthetic. Billets are real MTARNG force structure.' : undefined)
   }
 
   return (
@@ -211,6 +211,9 @@ export default function SkillsExplorerPage() {
 
       <div className="px-8 py-6">
         <div className="max-w-[1400px] mx-auto space-y-5">
+          <DataSourceBanner rosterIsDemo={rosterIsDemo} civilianIsSynthetic={civilianIsSynthetic}
+            positionCount={positions.length} />
+
           {/* Aggregates */}
           <section className="grid md:grid-cols-4 gap-3">
             {[
@@ -269,7 +272,7 @@ export default function SkillsExplorerPage() {
                           <h3 className="font-bold text-gray-900">
                             {rankLabel(r.soldier.rank)} {r.soldier.lastName}, {r.soldier.firstName}
                           </h3>
-                          {isDemo && <DemoPill />}
+                          {(rosterIsDemo || civilianIsSynthetic) && <DemoPill />}
                           <VerificationBadge value={r.bestVerification} />
                           {r.hasExpiredCredential && (
                             <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-800 border border-red-200">

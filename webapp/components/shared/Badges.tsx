@@ -158,6 +158,33 @@ export function FactorList({ factors }: {
   )
 }
 
+/**
+ * States exactly which parts of what you are looking at are real. The billets
+ * are current MTARNG force structure; only people and civilian capability can
+ * be synthetic, and conflating the two is what makes a demo misleading.
+ */
+export function DataSourceBanner({
+  rosterIsDemo, civilianIsSynthetic, positionCount,
+}: {
+  rosterIsDemo: boolean
+  civilianIsSynthetic: boolean
+  positionCount?: number
+}) {
+  if (!rosterIsDemo && !civilianIsSynthetic) return null
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+      <span className="font-bold">What is real here: </span>
+      the {positionCount ? `${positionCount.toLocaleString()} ` : ''}billets, units, grades, MOSs, and
+      locations come from the current MTARNG force structure.
+      <span className="font-bold"> What is synthetic: </span>
+      {rosterIsDemo && 'the people occupying those billets'}
+      {rosterIsDemo && civilianIsSynthetic && ', and '}
+      {civilianIsSynthetic && 'all civilian occupations, skills, credentials, and willingness'}
+      {' '}— generated deterministically for demonstration. No real personnel are represented.
+    </div>
+  )
+}
+
 /** Standing banner: nothing in this prototype is an official personnel action. */
 export function PrototypeNotice({ scope = 'This view' }: { scope?: string }) {
   return (

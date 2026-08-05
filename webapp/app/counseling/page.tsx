@@ -389,7 +389,9 @@ export default function CounselingPage() {
 
           {/* Footer */}
           <div className="border-t border-gray-200 pt-3 text-center text-xs text-gray-400">
-            MT ARNG Career Planner v1.0 · DEMO DATA — Replace with real MTARNG position data before operational use
+            Ask Steeves · MT ARNG · Position data from the current MTARNG force structure ({positions.length} billets).
+            Promotion and retention timing are planning estimates — verify with your S1. This is a counseling
+            aid, not an official personnel record or assignment authority.
           </div>
         </div>
       </div>

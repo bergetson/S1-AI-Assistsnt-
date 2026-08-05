@@ -7,7 +7,7 @@ import { buildCoa, DEFAULT_COA_KINDS } from '@/lib/mission/coa'
 import type { MissionDefinition, CapabilityRequirement, CoaKind } from '@/lib/mission/types'
 import { categoryNames, subcategoriesOf } from '@/lib/civilian/taxonomy'
 import { MT_CITIES } from '@/lib/data/cities'
-import { ImpactBadge, VerificationBadge, PrototypeNotice, DemoPill, MissingDataNote } from '@/components/shared/Badges'
+import { ImpactBadge, VerificationBadge, PrototypeNotice, DemoPill, MissingDataNote, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
 import { rankLabel } from '@/lib/commandTypes'
 import { cn } from '@/lib/utils'
@@ -24,7 +24,7 @@ const STARTER: CapabilityRequirement[] = [
 ]
 
 export default function MissionBuilderPage() {
-  const { roster, civilianProfiles, isDemo } = useForceData()
+  const { roster, civilianProfiles, rosterIsDemo, civilianIsSynthetic } = useForceData()
   const [name, setName] = useState('Temporary Power and Shelter Support')
   const [location, setLocation] = useState('Great Falls')
   const [durationDays, setDuration] = useState(45)
@@ -80,7 +80,7 @@ export default function MissionBuilderPage() {
         c.distanceMiles == null ? 'unknown' : String(c.distanceMiles),
         c.communityImpact, c.warnings.join('; '),
       ]),
-      `${isDemo ? 'DEMO DATA — synthetic. ' : ''}Decision support only — not an order or tasking.`)
+      `${civilianIsSynthetic ? 'DEMO DATA — civilian capability is synthetic. ' : ''}Decision support only — not an order or tasking.`)
   }
 
   return (
@@ -200,6 +200,8 @@ export default function MissionBuilderPage() {
 
           {/* ── COAs and candidates ── */}
           <div className="space-y-5">
+            <DataSourceBanner rosterIsDemo={rosterIsDemo} civilianIsSynthetic={civilianIsSynthetic} />
+
             <section>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Personnel courses of action</h2>
               <p className="text-sm text-gray-500 mb-3">
@@ -293,7 +295,7 @@ export default function MissionBuilderPage() {
                               <span className="font-bold text-gray-900">
                                 {rankLabel(c.rank)} {c.displayName}
                               </span>
-                              {isDemo && <DemoPill />}
+                              {(rosterIsDemo || civilianIsSynthetic) && <DemoPill />}
                               {inCoa && <span className="text-xs px-2 py-0.5 rounded bg-green-600 text-white font-medium">In this COA</span>}
                               <VerificationBadge value={c.verification} />
                               <ImpactBadge value={c.communityImpact} />
