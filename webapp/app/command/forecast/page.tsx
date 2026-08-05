@@ -6,7 +6,7 @@ import { useCommandStore } from '@/lib/commandStore'
 import { projectAttrition, projectPromotions, rosterInFormation } from '@/lib/forceAnalytics'
 import { RETENTION_SOURCES } from '@/lib/data/retention'
 import type { CareerCategory } from '@/lib/types'
-import { rankLabel } from '@/lib/commandTypes'
+import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
@@ -177,7 +177,7 @@ export default function CommandForecastPage() {
                       <tbody>
                         {(attrition.find(y => y.year === expandedYear)?.departures ?? []).map(d => (
                           <tr key={d.soldier.id}>
-                            <td className="border border-gray-200 px-2 py-1">{d.soldier.lastName}, {d.soldier.firstName}</td>
+                            <td className="border border-gray-200 px-2 py-1">{soldierLabel(d.soldier)}</td>
                             <td className="border border-gray-200 px-2 py-1 font-bold" title={d.soldier.rank}>{rankLabel(d.soldier.rank)}</td>
                             <td className="border border-gray-200 px-2 py-1">{d.soldier.mos}</td>
                             <td className="border border-gray-200 px-2 py-1">{d.soldier.componentStatus}</td>

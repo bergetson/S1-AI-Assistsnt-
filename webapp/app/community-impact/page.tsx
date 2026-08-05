@@ -166,7 +166,7 @@ export default function CommunityImpactPage() {
                     <p className="text-sm text-gray-500">
                       {summary.totalSelected} personnel · {activation.durationDays} days ·{' '}
                       {activation.noticeDays} days notice · {activation.activationType}
-                      {(rosterIsDemo || civilianIsSynthetic) && <> · <DemoPill /></>}
+                      {civilianIsSynthetic && <> · <DemoPill /></>}
                     </p>
                   </div>
                   <ImpactBadge value={summary.level} />

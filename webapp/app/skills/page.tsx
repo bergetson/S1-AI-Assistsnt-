@@ -8,7 +8,7 @@ import { PROFICIENCY_ORDER, type SkillProficiency, type VerificationStatus } fro
 import { countyForCity } from '@/lib/communityImpact/types'
 import { VerificationBadge, DemoPill, PrototypeNotice, MissingDataNote, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
-import { rankLabel } from '@/lib/commandTypes'
+import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import { cn } from '@/lib/utils'
 
 const GREEN = '#1B4F2A'
@@ -270,9 +270,9 @@ export default function SkillsExplorerPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-gray-900">
-                            {rankLabel(r.soldier.rank)} {r.soldier.lastName}, {r.soldier.firstName}
+                            {rankLabel(r.soldier.rank)} {soldierLabel(r.soldier)}
                           </h3>
-                          {(rosterIsDemo || civilianIsSynthetic) && <DemoPill />}
+                          {civilianIsSynthetic && <DemoPill />}
                           <VerificationBadge value={r.bestVerification} />
                           {r.hasExpiredCredential && (
                             <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-800 border border-red-200">

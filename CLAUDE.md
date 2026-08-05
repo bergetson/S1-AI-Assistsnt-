@@ -77,7 +77,7 @@ Key modules:
 - `lib/commandTypes.ts` — `RosterSoldier` and analytics result types; `rankLabel()` maps pay grade → rank name
 - `lib/forceAnalytics.ts` — all pure analytics (manning, attrition, promotion forecast, candidate ranking, unit-name resolution and family grouping)
 - `lib/data/retention.ts` — `RETENTION_LIMITS` (RCP / MRD). **Draft values needing S1 verification**, structured like `PROMOTION_GATES`
-- `lib/data/demoRoster.ts` — deterministic synthetic roster (seeded PRNG, no `Math.random`/`Date.now` — a static export would otherwise mismatch on hydration)
+- `lib/data/realRoster.ts` — the REAL assigned force, de-identified (2,293 soldiers). Real grade/MOS/unit/component/TIP/ETS/MOSQ; identity discarded at generation. `yearsOfService`/`timeInGrade` are 0 = Unknown because the extract lacks PEBD and DOR — never fabricate them.
 - `lib/commanderAI.ts` — the anonymization boundary and `buildCommanderPrompt()`
 - `lib/rosterImport.ts` — hand-rolled RFC-4180 CSV parser (no new dependency)
 - `lib/commandStore.ts` — roster/formation state (localStorage `mtarng-command`)
@@ -166,13 +166,21 @@ Run `npm test` (105 tests). The non-obvious ones:
 - Deterministic ranking must not change when a soldier's name changes.
 - Statewide totals must equal the sum of formation totals.
 
-### Demo data determinism
+### What is real vs synthetic
 
-`lib/data/demoRoster.ts` and `lib/civilian/demoData.ts` both use seeded
-mulberry32 PRNGs keyed on soldier id, and a fixed `BASE_YEAR`. Never introduce
-`Math.random()` or `Date.now()` — this is a static export, and nondeterminism
-becomes a hydration mismatch. Civilian profiles are keyed per soldier id so
-roster reordering cannot shift anyone's profile.
+- **Billets** (`positions.ts`, 3,092): real current MTOE.
+- **Soldiers** (`realRoster.ts`, 2,293): real assignments, de-identified. Not demo.
+- **Civilian capability** (`civilian/demoData.ts`): synthetic — no real source exists.
+
+Do not label the roster "demo"; it is real data with identity withheld. Use
+`rosterIsDemo` / `civilianIsSynthetic` from `useForceData()` rather than one
+blanket flag, or synthetic civilian data will render as real once someone
+imports a named roster.
+
+`lib/civilian/demoData.ts` uses a seeded mulberry32 PRNG keyed on soldier id and
+a fixed `BASE_YEAR`. Never introduce `Math.random()` or `Date.now()` — this is a
+static export and nondeterminism becomes a hydration mismatch. Keying on soldier
+id means roster reordering cannot shift anyone's profile.
 
 ### New store keys
 

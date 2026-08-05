@@ -1,11 +1,13 @@
 'use client'
 
+import { soldierLabel } from '@/lib/commandTypes'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { useCommandStore } from '@/lib/commandStore'
 import { importRosterCsv, buildCsvTemplate, CSV_TEMPLATE_HEADERS, type ImportResult } from '@/lib/rosterImport'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, CommandPrintStyles, getDemoRoster,
+  ARMY_GREEN, CommandHeader, DemoBanner, CommandPrintStyles, getBaseRoster,
 } from '@/components/command/CommandShell'
 import { cn } from '@/lib/utils'
 
@@ -39,7 +41,7 @@ export default function CommandImportPage() {
       return
     }
     setRoster(result.soldiers, 'imported')
-    setCommitted(`ok:Imported ${result.soldiers.length} soldiers. Demo data has been replaced.`)
+    setCommitted(`ok:Imported ${result.soldiers.length} soldiers. The de-identified baseline roster has been replaced.`)
   }
 
   function downloadTemplate() {
@@ -68,13 +70,13 @@ export default function CommandImportPage() {
             source === 'demo' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50')}>
             <div className="font-semibold text-sm">
               {source === 'demo'
-                ? `Currently showing DEMO DATA — ${getDemoRoster().length} synthetic soldiers.`
+                ? `Currently showing the REAL MTARNG force, de-identified — ${getBaseRoster().length} soldiers. Names are withheld.`
                 : `Currently showing YOUR IMPORTED ROSTER — ${roster.length} soldiers.`}
             </div>
             {source === 'imported' && (
-              <button onClick={() => { resetCommand(); setCommitted('ok:Reverted to demo data.') }}
+              <button onClick={() => { resetCommand(); setCommitted('ok:Reverted to the de-identified baseline roster.') }}
                 className="mt-2 text-xs underline text-gray-600 hover:text-red-700">
-                Clear my roster and go back to demo data
+                Clear my roster and go back to the de-identified baseline
               </button>
             )}
           </div>
@@ -84,7 +86,7 @@ export default function CommandImportPage() {
             <h2 className="font-bold mb-1">Before you import real personnel data</h2>
             <ul className="list-disc pl-5 space-y-1 text-xs">
               <li>This site is publicly reachable, but your roster is stored <strong>only in this browser</strong> and is never transmitted to a server.</li>
-              <li>Anyone else visiting the site sees demo data, not yours. Clearing your browser data deletes the roster.</li>
+              <li>Anyone else visiting the site sees the de-identified baseline, not your named roster. Clearing your browser data deletes it.</li>
               <li>When you ask the AI anything, names are stripped first — it only ever sees pseudonyms like <span className="font-mono">S-014</span>.</li>
               <li>Evaluation bullets are free text and are excluded from AI calls unless you explicitly opt in.</li>
               <li>Use a shared or public computer at your own risk, and clear the roster when you are done.</li>
@@ -211,7 +213,7 @@ export default function CommandImportPage() {
                       <tbody>
                         {result.soldiers.slice(0, 5).map(s => (
                           <tr key={s.id} className="border-t border-gray-100">
-                            <td className="px-2 py-1">{s.lastName}, {s.firstName}</td>
+                            <td className="px-2 py-1">{soldierLabel(s)}</td>
                             <td className="px-2 py-1 font-mono font-bold">{s.rank}</td>
                             <td className="px-2 py-1">{s.careerCategory}</td>
                             <td className="px-2 py-1">{s.mos}</td>

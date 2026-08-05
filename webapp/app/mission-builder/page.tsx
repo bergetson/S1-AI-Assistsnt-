@@ -295,7 +295,7 @@ export default function MissionBuilderPage() {
                               <span className="font-bold text-gray-900">
                                 {rankLabel(c.rank)} {c.displayName}
                               </span>
-                              {(rosterIsDemo || civilianIsSynthetic) && <DemoPill />}
+                              {civilianIsSynthetic && <DemoPill />}
                               {inCoa && <span className="text-xs px-2 py-0.5 rounded bg-green-600 text-white font-medium">In this COA</span>}
                               <VerificationBadge value={c.verification} />
                               <ImpactBadge value={c.communityImpact} />

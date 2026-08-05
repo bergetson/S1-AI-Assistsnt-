@@ -15,7 +15,7 @@ import {
 import { queryClaude, getStoredClaudeKey } from '@/lib/claude'
 import { queryAskSage, buildFullMessage, getStoredCredentials } from '@/lib/asksage'
 import type { Position } from '@/lib/types'
-import { rankLabel } from '@/lib/commandTypes'
+import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
@@ -212,7 +212,7 @@ export default function CommandSuccessionPage() {
                   {target.statusType} ·{' '}
                   {incumbent ? (
                     <span className="text-amber-700 font-semibold">
-                      Currently held by {incumbent.lastName}, {incumbent.firstName} ({incumbent.timeInPosition} yr in seat)
+                      Currently held by {soldierLabel(incumbent)} ({incumbent.timeInPosition} yr in seat)
                     </span>
                   ) : (
                     <span className="text-green-700 font-semibold">Vacant</span>
@@ -243,7 +243,7 @@ export default function CommandSuccessionPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-gray-400 font-bold">#{i + 1}</span>
                               <span className="font-bold text-gray-900">
-                                {c.soldier.lastName}, {c.soldier.firstName}
+                                {soldierLabel(c.soldier)}
                               </span>
                               <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-bold" title={c.soldier.rank}>
                                 {rankLabel(c.soldier.rank)}

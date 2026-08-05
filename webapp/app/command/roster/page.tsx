@@ -8,7 +8,7 @@ import {
   buildUnitNameMap, resolveUnitName, TIP_STALE_YEARS,
 } from '@/lib/forceAnalytics'
 import { PROMOTION_GATES, RANK_NUM } from '@/lib/scoring'
-import { rankLabel, type RosterSoldier } from '@/lib/commandTypes'
+import { rankLabel, type RosterSoldier, soldierLabel } from '@/lib/commandTypes'
 import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
@@ -237,9 +237,10 @@ export default function CommandRosterPage() {
                     return (
                       <tr key={s.id} className={cn(i % 2 === 0 ? 'bg-white' : 'bg-gray-50', 'hover:bg-green-50')}>
                         <td className="border border-gray-200 px-2 py-1.5 font-medium whitespace-nowrap">
-                          {s.lastName}, {s.firstName}
-                          {source === 'demo' && (
-                            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold align-middle">DEMO</span>
+                          {soldierLabel(s)}
+                          {source !== 'imported' && (
+                            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-700 font-bold align-middle"
+                              title="Real soldier, name withheld in this public prototype.">ID ONLY</span>
                           )}
                         </td>
                         <td className="border border-gray-200 px-2 py-1.5 font-bold whitespace-nowrap" title={s.rank}>
@@ -254,11 +255,16 @@ export default function CommandRosterPage() {
                         <td className="border border-gray-200 px-2 py-1.5 text-xs" title={s.dutyTitle}>
                           {s.dutyTitle.slice(0, 30)}
                         </td>
-                        <td className="border border-gray-200 px-2 py-1.5 text-center">{s.yearsOfService}</td>
+                        <td className="border border-gray-200 px-2 py-1.5 text-center"
+                          title={s.yearsOfService ? undefined : 'Not available in the source extract (PEBD missing)'}>
+                          {s.yearsOfService || <span className="text-gray-400">—</span>}
+                        </td>
                         <td className={cn('border border-gray-200 px-2 py-1.5 text-center font-medium',
                           eligible && 'text-green-700')}
-                          title={gate ? `${next} needs ${gate.minTig} yr TIG / ${gate.minTis} yr TIS` : ''}>
-                          {s.timeInGrade}
+                          title={s.timeInGrade
+                            ? (gate ? `${next} needs ${gate.minTig} yr TIG / ${gate.minTis} yr TIS` : '')
+                            : 'Not available in the source extract (DOR missing)'}>
+                          {s.timeInGrade || <span className="text-gray-400">—</span>}
                         </td>
                         <td className={cn('border border-gray-200 px-2 py-1.5 text-center font-medium',
                           stale && 'text-amber-700 font-bold')}>

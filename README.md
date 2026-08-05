@@ -131,21 +131,30 @@ different rule than the math used. Browse them at `/talent/rules`.
 current MTOE extract, with brigade/battalion/paragraph-line and an `authorized`
 flag. **Billets only** — no names, no EmplId, no per-soldier dates.
 
-**Rosters carry PII and are never committed.** Import them at
-`/command/import`; they stay in that browser's localStorage. `.gitignore` blocks
-`*.xlsx` and `*roster*.csv` as a backstop.
+**Roster** (`lib/data/realRoster.ts`): the real assigned force, **de-identified**
+— 2,293 soldiers with real grades, MOSs, units, locations, component status
+(AGR / M-Day / Technician), time in position, ETS dates, and MOS qualification.
 
-**Demo data** is synthetic, deterministic, and labeled everywhere — a red banner,
-a `DEMO` pill on every name, a print watermark, and a comment line on every CSV
-export.
+Identity is not present. Names, EmplId, FMID, and position numbers were read from
+the source extract and discarded; each soldier carries a sequential pseudonym
+(`S-0001`). Tests assert no identity field can reappear.
 
-### Updating demo data
-- Roster: `lib/data/demoRoster.ts` (`DEMO_SEED`, per-unit fill rates, archetypes)
+`yearsOfService` and `timeInGrade` are `0` because the extract contains neither
+PEBD nor DOR. The app reads `0` as **Unknown** and shows `—`. They are
+deliberately not fabricated — adding those two columns to the export is what
+lights up promotion eligibility, board readiness, and the promotion forecast.
+
+**Named rosters are never committed.** Import one at `/command/import`; it stays
+in that browser's localStorage. `.gitignore` blocks `*.xlsx` and `*roster*.csv`.
+
+**Civilian capability is still synthetic** — no real civilian data has been
+collected. It is deterministic and labeled with a `CIV: SYNTHETIC` badge
+everywhere it appears, plus a comment line on every CSV export.
+
+### Updating the data
+- Force structure and roster: regenerate from a new MTOE/assignment extract
 - Civilian profiles: `lib/civilian/demoData.ts` (`ARCHETYPES`, weights)
-- Opening formation: `DEMO_DEFAULT_UICS`
-
-Change a seed and every derived screen changes deterministically. Tests assert
-that identical input always yields identical output.
+- Opening formation: `DEFAULT_FORMATION_UICS` in `lib/data/realRoster.ts`
 
 ### Importing your own data
 1. `/command/import` → download the CSV template
@@ -160,7 +169,7 @@ never used as one.
 
 ## Testing
 
-105 tests across four suites, including invariants that encode the product's
+120 tests across five suites, including invariants that encode the product's
 promises:
 
 - Completing a qualification never lowers readiness

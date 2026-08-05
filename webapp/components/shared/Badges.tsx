@@ -96,8 +96,14 @@ export function ProvenanceBadge({ value }: { value: DataProvenance | undefined }
   )
 }
 
+/** Marks synthetic CIVILIAN capability — the military data alongside it is real. */
 export function DemoPill() {
-  return <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold align-middle">DEMO</span>
+  return (
+    <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold align-middle"
+      title="Civilian occupation, skills, and credentials are synthetic. Military assignment data is real.">
+      CIV: SYNTHETIC
+    </span>
+  )
 }
 
 /** Explicit callout for data that is absent — never hide this in a tooltip. */
@@ -174,13 +180,13 @@ export function DataSourceBanner({
   return (
     <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
       <span className="font-bold">What is real here: </span>
-      the {positionCount ? `${positionCount.toLocaleString()} ` : ''}billets, units, grades, MOSs, and
-      locations come from the current MTARNG force structure.
+      the {positionCount ? `${positionCount.toLocaleString()} ` : ''}billets and the soldiers filling them are
+      actual MTARNG data — real grades, MOSs, units, locations, component status, time in position,
+      and ETS dates. Names are withheld.
       <span className="font-bold"> What is synthetic: </span>
-      {rosterIsDemo && 'the people occupying those billets'}
-      {rosterIsDemo && civilianIsSynthetic && ', and '}
       {civilianIsSynthetic && 'all civilian occupations, skills, credentials, and willingness'}
-      {' '}— generated deterministically for demonstration. No real personnel are represented.
+      {' '}— generated deterministically for demonstration, because no civilian capability has been
+      collected yet. Time in service and time in grade are absent from the source extract and read as unknown.
     </div>
   )
 }

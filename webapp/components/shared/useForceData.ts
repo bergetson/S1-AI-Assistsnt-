@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
-import { getDemoRoster } from '@/components/command/CommandShell'
+import { getBaseRoster } from '@/components/command/CommandShell'
 import { buildCivilianProfiles } from '@/lib/civilian/demoData'
 import { useCivilianStore } from '@/lib/civilianStore'
 import type { CivilianCapabilityProfile } from '@/lib/civilian/types'
@@ -29,12 +29,13 @@ function civilianFor(roster: RosterSoldier[]): Map<string, CivilianCapabilityPro
 export function useForceData() {
   const { roster, source, selectedUics } = useCommandStore()
   const activeRoster = useMemo(
-    () => (source === 'demo' ? getDemoRoster() : roster),
+    () => (source === 'imported' ? roster : getBaseRoster()),
     [roster, source]
   )
   const civilianProfiles = useMemo(() => civilianFor(activeRoster), [activeRoster])
 
-  const rosterIsDemo = source === 'demo'
+  // The baseline roster is real force data, de-identified — not synthetic.
+  const rosterIsDemo = false
 
   return {
     positions,

@@ -1,5 +1,7 @@
 'use client'
 
+import { soldierLabel } from '@/lib/commandTypes'
+
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useForceData, AS_OF } from '@/components/shared/useForceData'
@@ -186,7 +188,7 @@ export default function TalentMarketplacePage() {
                         {deterministic.slice(0, 6).map((c, i) => (
                           <li key={c.soldier.id} className="flex items-center justify-between text-xs border-b border-gray-100 py-1">
                             <span className="text-gray-700">
-                              {i + 1}. {c.soldier.lastName}, {c.soldier.firstName} — {c.soldier.rank} {c.soldier.mos}
+                              {i + 1}. {soldierLabel(c.soldier)} — {c.soldier.rank} {c.soldier.mos}
                             </span>
                             <span className="font-bold">{c.score}/100 · {c.readiness}</span>
                           </li>

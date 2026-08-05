@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
-import { buildDemoRoster, DEMO_DEFAULT_UICS } from '@/lib/data/demoRoster'
+import { realRoster, DEFAULT_FORMATION_UICS, REAL_ROSTER_MISSING_FIELDS } from '@/lib/data/realRoster'
 import { buildUnitFamilies, summarizeForce } from '@/lib/forceAnalytics'
 import { cn } from '@/lib/utils'
 
@@ -12,15 +12,18 @@ export const ARMY_GREEN = '#1B4F2A'
 export const GOLD = '#C8A96E'
 
 /**
- * Demo roster is built once at module load and never persisted. Writing ~1,000
- * synthetic soldiers into localStorage on first page view would eat most of the
- * origin quota that the real roster needs.
+ * The baseline roster is the REAL MTARNG force, de-identified: real grades,
+ * MOSs, units, locations, component status, time in position, ETS dates, and
+ * MOS qualification, with sequential pseudonyms in place of identity.
+ *
+ * It is never written to localStorage — that space is reserved for a commander's
+ * own imported roster.
  */
-let demoCache: ReturnType<typeof buildDemoRoster> | null = null
-export function getDemoRoster() {
-  if (!demoCache) demoCache = buildDemoRoster(positions)
-  return demoCache
+export function getBaseRoster() {
+  return realRoster
 }
+
+export { REAL_ROSTER_MISSING_FIELDS }
 
 /**
  * Resolves the roster actually in play. Demo data is substituted in whenever the
@@ -29,7 +32,7 @@ export function getDemoRoster() {
 export function useActiveRoster() {
   const { roster, source } = useCommandStore()
   return useMemo(
-    () => (source === 'demo' ? getDemoRoster() : roster),
+    () => (source === 'imported' ? roster : getBaseRoster()),
     [roster, source]
   )
 }
@@ -44,7 +47,7 @@ export function useSeedFormation() {
   useEffect(() => {
     if (seeded.current) return
     seeded.current = true
-    if (selectedUics.length === 0) setSelectedUics(DEMO_DEFAULT_UICS)
+    if (selectedUics.length === 0) setSelectedUics(DEFAULT_FORMATION_UICS)
     // Intentionally runs once on mount; re-seeding would fight a deliberate clear.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -66,30 +69,38 @@ export function useHydrated(): boolean {
   return hydrated
 }
 
+/**
+ * States what the baseline data actually is. It is no longer synthetic — it is
+ * the real force with identity removed — so calling it "DEMO" would be as
+ * misleading in the other direction.
+ */
 export function DemoBanner() {
   const { source } = useCommandStore()
   const hydrated = useHydrated()
-  if (!hydrated || source !== 'demo') return null
+  if (!hydrated || source === 'imported') return null
   return (
-    <div className="bg-red-50 border-y border-red-300 text-red-800 px-8 py-2 text-sm font-semibold flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="px-2 py-0.5 rounded bg-red-600 text-white text-xs tracking-wide">DEMO DATA</span>
-      <span className="font-normal">
-        Synthetic soldiers generated onto real MTARNG billets. These are not real personnel — names,
-        dates, and evaluations are fabricated.
+    <div className="bg-blue-50 border-y border-blue-300 text-blue-900 px-8 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="px-2 py-0.5 rounded bg-blue-700 text-white text-xs font-bold tracking-wide">
+        REAL FORCE · DE-IDENTIFIED
       </span>
-      <Link href="/command/import" className="underline font-semibold ml-auto">
-        Import your roster →
+      <span>
+        Actual MTARNG assignments — real grades, MOSs, units, time in position, and ETS dates.
+        Names are withheld; soldiers appear as <span className="font-mono">S-nnnn</span>.
+        Time in service and time in grade are unavailable in the source extract and read as unknown.
+      </span>
+      <Link href="/command/import" className="underline font-semibold ml-auto whitespace-nowrap">
+        Import a named roster →
       </Link>
     </div>
   )
 }
 
-/** Diagonal watermark that only appears on printed output. */
+/** Print-only watermark noting the identity boundary. */
 export function DemoWatermark() {
   const { source } = useCommandStore()
   const hydrated = useHydrated()
-  if (!hydrated || source !== 'demo') return null
-  return <div className="demo-watermark" aria-hidden>DEMO DATA — NOT REAL PERSONNEL</div>
+  if (!hydrated || source === 'imported') return null
+  return <div className="demo-watermark" aria-hidden>DE-IDENTIFIED — NAMES WITHHELD</div>
 }
 
 export function CommandHeader({

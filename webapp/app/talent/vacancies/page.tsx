@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useForceData, BASE_YEAR } from '@/components/shared/useForceData'
 import { vacantBillets, buildUnitNameMap, resolveUnitName, rankCandidates, earliestDeparture, rosterInFormation } from '@/lib/forceAnalytics'
 import { countyForCity } from '@/lib/communityImpact/types'
-import { rankLabel } from '@/lib/commandTypes'
+import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
 import { cn } from '@/lib/utils'
@@ -150,7 +150,7 @@ export default function VacanciesPage() {
                           {eligible.slice(0, 8).map((c, i) => (
                             <li key={c.soldier.id} className="flex items-center justify-between text-xs border-b border-gray-100 py-1">
                               <span className="text-gray-700">
-                                {i + 1}. {c.soldier.lastName}, {c.soldier.firstName} — {rankLabel(c.soldier.rank)} {c.soldier.mos} · {c.soldier.unitName}
+                                {i + 1}. {soldierLabel(c.soldier)} — {rankLabel(c.soldier.rank)} {c.soldier.mos} · {c.soldier.unitName}
                               </span>
                               <span className="font-bold whitespace-nowrap ml-2">{c.score}/100 · {c.readiness}</span>
                             </li>

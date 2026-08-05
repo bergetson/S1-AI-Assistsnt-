@@ -45,6 +45,18 @@ export const RANK_LABEL: Record<string, string> = {
   O1: '2LT', O2: '1LT', O3: 'CPT', O4: 'MAJ', O5: 'LTC', O6: 'COL',
 }
 
+/**
+ * Display name for a soldier. The de-identified baseline roster carries a
+ * pseudonym in lastName and an empty firstName, so this must not emit a
+ * dangling comma.
+ */
+export function soldierLabel(s: { lastName: string; firstName: string }): string {
+  const last = (s.lastName ?? '').trim()
+  const first = (s.firstName ?? '').trim()
+  if (!first) return last || 'Unknown'
+  return `${last}, ${first}`
+}
+
 export function rankLabel(grade: string): string {
   return RANK_LABEL[grade] ?? grade
 }
