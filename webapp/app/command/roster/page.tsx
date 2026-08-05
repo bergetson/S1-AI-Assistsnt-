@@ -190,7 +190,7 @@ export default function CommandRosterPage() {
               <option value="board">Board eligible</option>
               <option value="promotable">Promotable</option>
               <option value="stale">{TIP_STALE_YEARS}+ yrs in position</option>
-              <option value="flagged">Flagged</option>
+              <option value="flagged">Not MOS-qualified</option>
             </select>
           </div>
           <button
@@ -279,7 +279,8 @@ export default function CommandRosterPage() {
                           <div className="flex flex-wrap gap-1">
                             {eligible && <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">Board</span>}
                             {stale && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Move</span>}
-                            {s.flagged && <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">Flag</span>}
+                            {s.flagged && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
+                              title="Not MOS-qualified per the source extract. This is not an AR 600-8-2 flag.">Not MOSQ</span>}
                           </div>
                         </td>
                       </tr>

@@ -219,12 +219,34 @@ export function computeManning(
 /** Years past which a soldier is considered stale in seat and ready to move. */
 export const TIP_STALE_YEARS = 3
 
-export function isBoardEligible(s: RosterSoldier): boolean {
+/**
+ * True only when the record actually carries the service clocks. The MTOE
+ * extract has neither PEBD nor DOR, so most rosters arrive with both at 0 —
+ * which means "unknown", not "zero years".
+ */
+export function hasServiceDates(s: RosterSoldier): boolean {
+  return s.yearsOfService > 0 || s.timeInGrade > 0
+}
+
+export type BoardEligibility = 'Eligible' | 'Not Eligible' | 'Unknown'
+
+/**
+ * Board eligibility as a three-state answer. Returning a confident "Not
+ * Eligible" for a soldier whose time in grade nobody recorded would tell a
+ * commander their bench is empty when it may be full.
+ */
+export function boardEligibility(s: RosterSoldier): BoardEligibility {
   const nextGrade = nextGradeFor(s.rank, s.careerCategory)
-  if (!nextGrade) return false
+  if (!nextGrade) return 'Not Eligible'      // at the category ceiling
   const gate = PROMOTION_GATES[nextGrade]
-  if (!gate) return false
+  if (!gate) return 'Unknown'
+  if (!hasServiceDates(s)) return 'Unknown'
   return s.timeInGrade >= gate.minTig && s.yearsOfService >= gate.minTis
+    ? 'Eligible' : 'Not Eligible'
+}
+
+export function isBoardEligible(s: RosterSoldier): boolean {
+  return boardEligibility(s) === 'Eligible'
 }
 
 export function isStaleInPosition(s: RosterSoldier): boolean {
@@ -427,9 +449,15 @@ export function projectPromotions(
       const typicalTig = gate?.typicalTig ?? 0
       const minTis = gate?.minTis ?? 0
 
-      const eligibleNow = feeder.filter(
+      // If the feeder grade has no service dates, eligibility is not computable.
+      // Reporting "0 eligible" would manufacture a promotion crisis out of a
+      // missing column — the single most misleading thing this page could do.
+      const feederWithDates = feeder.filter(hasServiceDates)
+      const eligibilityUnknown = feeder.length > 0 && feederWithDates.length === 0
+
+      const eligibleNow = feederWithDates.filter(
         s => s.timeInGrade >= minTig && s.yearsOfService >= minTis && !s.flagged).length
-      const eligibleByHorizon = feeder.filter(
+      const eligibleByHorizon = feederWithDates.filter(
         s => s.timeInGrade + horizonYears >= minTig &&
              s.yearsOfService + horizonYears >= minTis &&
              !s.flagged).length
@@ -443,9 +471,11 @@ export function projectPromotions(
         eligibleNow,
         eligibleByHorizon,
         feederStrength: feeder.length,
-        gap: promotionsNeeded - eligibleByHorizon,
+        // A gap is only meaningful when eligibility could actually be computed.
+        gap: eligibilityUnknown ? 0 : promotionsNeeded - eligibleByHorizon,
         minTig, typicalTig,
         accessionDriven: authorizedAtFeeder === 0 && feeder.length === 0,
+        eligibilityUnknown,
       })
     }
   }

@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { useForceData, AS_OF, BASE_YEAR } from '@/components/shared/useForceData'
 import { useMarketplaceStore } from '@/lib/marketplaceStore'
-import { isBoardEligible, isStaleInPosition, vacantBillets, earliestDeparture } from '@/lib/forceAnalytics'
+import { isBoardEligible, isStaleInPosition, vacantBillets, earliestDeparture, hasServiceDates } from '@/lib/forceAnalytics'
 import { mosGaps, promotionPipeline } from '@/lib/talent/statewideAnalytics'
 import { analyzeDataQuality } from '@/lib/talent/dataQuality'
 import { isCredentialExpired, isCredentialExpiringSoon } from '@/lib/civilian/types'
@@ -43,6 +43,8 @@ export default function TalentDashboardPage() {
 
   const criticalVacancies = vacancies.filter(v => v.isCommandOrKD)
   const boardEligible = roster.filter(isBoardEligible)
+  // No DOR/PEBD anywhere means eligibility is unknown, not zero.
+  const serviceDatesMissing = roster.length > 0 && !roster.some(hasServiceDates)
   const stale = roster.filter(isStaleInPosition)
   const projectedLosses = roster.filter(s => earliestDeparture(s, BASE_YEAR, 2) != null)
 
@@ -51,7 +53,9 @@ export default function TalentDashboardPage() {
   const overstrength = gaps.filter(g => g.status === 'Overstrength' && g.authorized >= 5)
 
   const pipeline = useMemo(() => promotionPipeline(positions, roster), [positions, roster])
-  const thinPipelines = pipeline.filter(p => p.status === 'Critical' || p.status === 'No Feeder')
+  const thinPipelines = serviceDatesMissing
+    ? []   // without service dates every transition would look Critical
+    : pipeline.filter(p => p.status === 'Critical' || p.status === 'No Feeder')
 
   const dq = useMemo(
     () => analyzeDataQuality(positions, roster, civilianProfiles, applications, AS_OF),
@@ -102,9 +106,12 @@ export default function TalentDashboardPage() {
           <section>
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">People</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Tile label="Board eligible now" value={boardEligible.length} tone="good" />
+              <Tile label="Board eligible now" value={serviceDatesMissing ? 'Unknown' : boardEligible.length}
+                tone={serviceDatesMissing ? 'neutral' : 'good'}
+                hint={serviceDatesMissing ? 'needs DOR + PEBD' : undefined} />
               <Tile label="3+ years in position" value={stale.length} tone="warn" hint="Due to move" />
-              <Tile label="Flagged" value={roster.filter(s => s.flagged).length} tone="bad" />
+              <Tile label="Not MOS-qualified" value={roster.filter(s => s.flagged).length} tone="warn"
+                hint="MOSQ status from the extract" />
               <Tile label="Total assigned" value={roster.length} />
             </div>
           </section>

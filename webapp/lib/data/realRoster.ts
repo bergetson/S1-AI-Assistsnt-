@@ -2335,10 +2335,15 @@ export const realRoster: RosterSoldier[] = [
 /** Fields the source extract does not contain, surfaced in the UI. */
 export const REAL_ROSTER_MISSING_FIELDS = ['PEBD (time in service)', 'DOR (time in grade)', 'Evaluations', 'PME completion'] as const
 /**
- * The formation the commander view opens on: 1-163 Infantry (HHC plus rifle
- * companies). A real maneuver battalion, so the first screen looks like an
- * actual commander's span of control rather than a statewide dump.
+ * The formation the commander view opens on: the 190th, 580 authorized billets
+ * across nine units.
+ *
+ * Deliberately NOT 1-163 Infantry. That battalion's assignment dates were
+ * mass-refreshed in the source system — all 505 of its soldiers carry the same
+ * 0.3 yr time in position — so it opens on a screen where the TIP column is
+ * uniformly meaningless. The 190th has a genuine spread (median 1.2 yr, tail to
+ * 5.9 yr, 85 soldiers past two years), so the first screen shows real signal.
  */
 export const DEFAULT_FORMATION_UICS = [
-  'WTCPT0', 'WTCPA0', 'WTCPB0', 'WTCPC0', 'WTCPD0', 'WTCPA1', 'WTHAAA',
+  'WPLUAA', 'WPLUA1', 'WPSDAA', 'WX2QAA', 'WX2QA1', 'WX2QA2', 'WX8XAA', 'WX8XA1', 'WY2LAA',
 ]

@@ -6,7 +6,7 @@ import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
 import {
   buildUnitFamilies, computeManning, summarizeForce, projectAttrition,
-  projectPromotions, rosterInFormation,
+  projectPromotions, rosterInFormation, hasServiceDates,
 } from '@/lib/forceAnalytics'
 import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
@@ -83,7 +83,10 @@ export default function CommandOverviewPage() {
   const hardDepartures = attrition.reduce((a, y) => a + y.hard, 0)
   // Accession-driven rows aren't promotion shortfalls — there's no feeder grade
   // in the formation to promote from, so surfacing them here is a false alarm.
-  const shortfalls = promotions.filter(p => p.gap > 0 && !p.accessionDriven)
+  const shortfalls = promotions.filter(p => p.gap > 0 && !p.accessionDriven && !p.eligibilityUnknown)
+  // When nobody in the formation has DOR/PEBD, promotion eligibility cannot be
+  // computed at all. Saying "0 eligible" would invent a crisis from a missing column.
+  const serviceDatesMissing = inFormation.length > 0 && !inFormation.some(hasServiceDates)
   const accessionNeeds = promotions.filter(p => p.accessionDriven && p.promotionsNeeded > 0)
 
   return (
@@ -217,18 +220,22 @@ export default function CommandOverviewPage() {
                 <Stat label="Enlisted" value={summary.enlisted} />
                 <Stat label="AGR" value={summary.agr} hint={`${summary.mday} M-Day`} />
                 <Stat
-                  label="Flagged" value={summary.flagged}
-                  tone={summary.flagged > 0 ? 'bad' : 'good'}
+                  label="Not MOS-qualified" value={summary.flagged}
+                  tone={summary.flagged > 0 ? 'warn' : 'good'}
                 />
               </section>
 
               {/* ── Attention items ── */}
               <section className="grid md:grid-cols-3 gap-4">
                 <Link href="/command/roster" className="rounded-xl border border-blue-200 bg-blue-50 p-4 hover:shadow-md transition block">
-                  <div className="text-3xl font-bold text-blue-800">{summary.boardEligible}</div>
+                  <div className="text-3xl font-bold text-blue-800">
+                    {serviceDatesMissing ? 'Unknown' : summary.boardEligible}
+                  </div>
                   <div className="font-semibold text-blue-900 text-sm mt-1">Board eligible now</div>
                   <p className="text-xs text-blue-700 mt-1">
-                    Meet minimum TIG and TIS for their next grade. Review packets and senior rater support.
+                    {serviceDatesMissing
+                      ? 'Cannot be computed — this roster has no date of rank or PEBD. Add those two columns and this fills in.'
+                      : 'Meet minimum TIG and TIS for their next grade. Review packets and senior rater support.'}
                   </p>
                 </Link>
                 <Link href="/command/roster" className="rounded-xl border border-amber-200 bg-amber-50 p-4 hover:shadow-md transition block">
@@ -251,6 +258,22 @@ export default function CommandOverviewPage() {
               </section>
 
               {/* ── Promotion shortfalls ── */}
+              {serviceDatesMissing && (
+                <section className="rounded-xl border-l-4 border-blue-500 bg-white border border-gray-200 p-5 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1">Promotion planning needs two more columns</h2>
+                  <p className="text-sm text-gray-600">
+                    This roster has no <strong>date of rank</strong> and no <strong>PEBD</strong>, so time in
+                    grade and time in service are unknown. Board eligibility, the promotion requirement, and
+                    retention control points all depend on them and are shown as <em>Unknown</em> rather than
+                    guessed.
+                  </p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Everything else on this page — manning, assignments, time in position, expected losses
+                    from expiring contracts — is computed from real data and is accurate.
+                  </p>
+                </section>
+              )}
+
               {shortfalls.length > 0 && (
                 <section className="rounded-xl border-l-4 border-red-500 bg-white border border-gray-200 p-5 shadow-sm">
                   <h2 className="font-bold text-gray-900 mb-1">Promotion shortfalls in the next {horizonYears} years</h2>

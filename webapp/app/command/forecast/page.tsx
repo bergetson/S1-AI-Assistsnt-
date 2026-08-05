@@ -277,13 +277,22 @@ export default function CommandForecastPage() {
                               <td className="border border-gray-200 px-2 py-1.5 text-center font-bold">{p.promotionsNeeded}</td>
                               <td className="border border-gray-200 px-2 py-1.5 text-center">{p.feederStrength}</td>
                               <td className="border border-gray-200 px-2 py-1.5 text-center">
-                                {p.eligibleByHorizon}
-                                {p.eligibleNow !== p.eligibleByHorizon && (
-                                  <span className="text-xs text-gray-400"> ({p.eligibleNow} now)</span>
+                                {p.eligibilityUnknown ? <span className="text-gray-400">—</span> : (
+                                  <>
+                                    {p.eligibleByHorizon}
+                                    {p.eligibleNow !== p.eligibleByHorizon && (
+                                      <span className="text-xs text-gray-400"> ({p.eligibleNow} now)</span>
+                                    )}
+                                  </>
                                 )}
                               </td>
                               <td className="border border-gray-200 px-2 py-1.5">
-                                {p.promotionsNeeded === 0 ? (
+                                {p.eligibilityUnknown ? (
+                                  <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
+                                    title="No date of rank or PEBD on this roster, so eligibility cannot be computed.">
+                                    UNKNOWN
+                                  </span>
+                                ) : p.promotionsNeeded === 0 ? (
                                   <span className="text-xs text-gray-400">no requirement</span>
                                 ) : p.accessionDriven ? (
                                   <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800"

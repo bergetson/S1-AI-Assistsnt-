@@ -85,3 +85,25 @@ describe('real de-identified roster', () => {
     expect(again.length).toBe(realRoster.length)
   })
 })
+
+describe('data quality catches bulk-stamped assignment dates', () => {
+  it('flags a unit whose entire population shows implausibly low time in position', async () => {
+    const { analyzeDataQuality } = await import('@/lib/talent/dataQuality')
+    const { positions } = await import('@/lib/data/positions')
+    const { realRoster } = await import('@/lib/data/realRoster')
+    const r = analyzeDataQuality(positions, realRoster, new Map(), [], '2026-06-01')
+    const flagged = r.issues.filter(i => i.category === 'Mass-refreshed dates')
+    // 1-163 Infantry's dates were reset in the source system.
+    expect(flagged.length).toBeGreaterThan(0)
+    expect(flagged.some(i => i.entityId.startsWith('WTCP'))).toBe(true)
+  })
+
+  it('does not flag units with a genuine spread', async () => {
+    const { analyzeDataQuality } = await import('@/lib/talent/dataQuality')
+    const { positions } = await import('@/lib/data/positions')
+    const { realRoster } = await import('@/lib/data/realRoster')
+    const r = analyzeDataQuality(positions, realRoster, new Map(), [], '2026-06-01')
+    const flagged = new Set(r.issues.filter(i => i.category === 'Mass-refreshed dates').map(i => i.entityId))
+    expect(flagged.has('WPLUAA')).toBe(false)   // 190th — real distribution
+  })
+})

@@ -154,6 +154,32 @@ export function analyzeDataQuality(
     }
   }
 
+  // ── Unit-level date integrity ───────────────────────────────────────────────
+  // A whole unit sharing one time-in-position means the source system stamped
+  // every assignment on the same day, not that everyone arrived together. The
+  // column is then unusable for that unit and should not be read as signal.
+  const byUnit = new Map<string, RosterSoldier[]>()
+  for (const s of orderedRoster) {
+    if (!s.uic) continue
+    const arr = byUnit.get(s.uic) ?? []
+    arr.push(s)
+    byUnit.set(s.uic, arr)
+  }
+  for (const [uic, people] of [...byUnit.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (people.length < 20) continue
+    const maxTip = Math.max(...people.map(s => s.timeInPosition))
+    // In any real unit of twenty or more, somebody has held their seat longer
+    // than six months. A ceiling below that means the dates were stamped in bulk.
+    if (maxTip > 0 && maxTip < 0.5) {
+      push({
+        severity: 'Warning', category: 'Mass-refreshed dates', entity: 'Soldier', entityId: uic,
+        label: uic,
+        detail: `No soldier in this unit of ${people.length} shows more than ${maxTip} yr in position. The source assignment dates were reset in bulk.`,
+        recommendedAction: 'Treat time in position as unusable for this unit until real date-arrived-station values are supplied.',
+      })
+    }
+  }
+
   // ── Civilian profiles ───────────────────────────────────────────────────────
   let withWillingness = 0
   for (const [soldierId, prof] of civilian) {

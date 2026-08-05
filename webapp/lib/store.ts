@@ -20,7 +20,9 @@ export const useProfileStore = create<ProfileStore>()(
         const next = { ...get().profile, ...p }
         set({
           profile: next,
-          profileComplete: !!(next.fullName && next.rank && next.mos && next.homeCity),
+          // Name is only needed for the printed counseling sheet — nothing scores
+          // on it. Requiring it to see position matches is friction with no payoff.
+          profileComplete: !!(next.rank && next.mos && next.homeCity),
         })
       },
       resetProfile: () => set({ profile: defaultProfile, profileComplete: false }),

@@ -419,3 +419,67 @@ describe('MOS position counts are derived from real force structure', () => {
     if (withTemplet !== authorizedOnly) expect(mosPositionCount('92Y')).toBeLessThan(withTemplet)
   })
 })
+
+describe('unknown service dates never manufacture a promotion crisis', () => {
+  it('reports Unknown board eligibility when TIG and TIS are absent', async () => {
+    const { boardEligibility, hasServiceDates } = await import('@/lib/forceAnalytics')
+    const noDates = soldier({ rank: 'E5', yearsOfService: 0, timeInGrade: 0 })
+    expect(hasServiceDates(noDates)).toBe(false)
+    expect(boardEligibility(noDates)).toBe('Unknown')
+  })
+
+  it('still answers definitively when the dates are present', async () => {
+    const { boardEligibility } = await import('@/lib/forceAnalytics')
+    expect(boardEligibility(soldier({ rank: 'E5', yearsOfService: 12, timeInGrade: 5 }))).toBe('Eligible')
+    expect(boardEligibility(soldier({ rank: 'E5', yearsOfService: 1, timeInGrade: 0.1 }))).toBe('Not Eligible')
+  })
+
+  it('flags the transition Unknown instead of reporting a shortfall', async () => {
+    const { projectPromotions } = await import('@/lib/forceAnalytics')
+    const positions = [
+      position({ id: 1, uic: 'U', grade: 'E6', careerCategory: 'Enlisted' }),
+      position({ id: 2, uic: 'U', grade: 'E6', careerCategory: 'Enlisted' }),
+      position({ id: 3, uic: 'U', grade: 'E5', careerCategory: 'Enlisted' }),
+    ]
+    const roster = [
+      soldier({ id: 'a', uic: 'U', rank: 'E5', yearsOfService: 0, timeInGrade: 0 }),
+      soldier({ id: 'b', uic: 'U', rank: 'E5', yearsOfService: 0, timeInGrade: 0 }),
+    ]
+    const need = projectPromotions(positions, roster, ['U'], 2026, 5)
+      .find(p => p.fromGrade === 'E5' && p.toGrade === 'E6')!
+    expect(need.eligibilityUnknown).toBe(true)
+    // The gap must be suppressed — a shortfall here would be an artifact.
+    expect(need.gap).toBe(0)
+  })
+
+  it('computes a real gap once dates exist', async () => {
+    const { projectPromotions } = await import('@/lib/forceAnalytics')
+    const positions = [
+      position({ id: 1, uic: 'U', grade: 'E6', careerCategory: 'Enlisted' }),
+      position({ id: 2, uic: 'U', grade: 'E6', careerCategory: 'Enlisted' }),
+      position({ id: 3, uic: 'U', grade: 'E5', careerCategory: 'Enlisted' }),
+    ]
+    const roster = [soldier({ id: 'a', uic: 'U', rank: 'E5', yearsOfService: 2, timeInGrade: 0.2 })]
+    const need = projectPromotions(positions, roster, ['U'], 2026, 5)
+      .find(p => p.fromGrade === 'E5' && p.toGrade === 'E6')!
+    expect(need.eligibilityUnknown).toBe(false)
+    expect(need.promotionsNeeded).toBeGreaterThan(0)
+  })
+})
+
+describe('profile gate', () => {
+  it('does not require a name to use the career tools', async () => {
+    // Name is only used on the printed counseling sheet; nothing scores on it.
+    const { useProfileStore } = await import('@/lib/store')
+    useProfileStore.getState().resetProfile()
+    useProfileStore.getState().setProfile({ rank: 'E5', mos: '92Y', homeCity: 'Billings' })
+    expect(useProfileStore.getState().profileComplete).toBe(true)
+  })
+
+  it('still requires the fields the scoring actually depends on', async () => {
+    const { useProfileStore } = await import('@/lib/store')
+    useProfileStore.getState().resetProfile()
+    useProfileStore.getState().setProfile({ rank: 'E5', mos: '', homeCity: 'Billings' })
+    expect(useProfileStore.getState().profileComplete).toBe(false)
+  })
+})

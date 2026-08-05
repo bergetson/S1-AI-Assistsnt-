@@ -188,6 +188,11 @@ export interface PromotionNeed {
    * lateral transfer, and flagging them as a promotion "shortfall" is noise.
    */
   accessionDriven: boolean
+  /**
+   * True when the feeder grade carries no time-in-grade or time-in-service, so
+   * eligibility cannot be computed. Distinct from "nobody is eligible".
+   */
+  eligibilityUnknown: boolean
 }
 
 // ── Succession / candidate matching ───────────────────────────────────────────
