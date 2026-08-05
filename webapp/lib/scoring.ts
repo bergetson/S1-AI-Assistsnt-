@@ -5,7 +5,10 @@ import { ARNG_BOARDS, getNextBoardDate } from './data/boards'
 export const RANK_NUM: Record<string, number> = {
   E1:1, E2:2, E3:3, E4:4, E5:5, E6:6, E7:7, E8:8, E9:9,
   W1:10, W2:11, W3:12, W4:13, W5:14,
-  O1:15, O2:16, O3:17, O4:18, O5:19, O6:20,
+  // O7/O8 exist in the MTARNG force structure (TAG / Land Component Commander).
+  // They sit above CATEGORY_CEILING.Officer (O6) so no planner path reaches them,
+  // but they need a number so those billets don't sort as rank 0.
+  O1:15, O2:16, O3:17, O4:18, O5:19, O6:20, O7:21, O8:22,
 }
 
 const COMMUTE_LIMIT_MINS: Record<CommuteLimit, number> = {

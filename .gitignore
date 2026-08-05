@@ -1,0 +1,14 @@
+# ── Personnel data must never be committed ───────────────────────────────────
+# This repository is public and deploys to public GitHub Pages. Roster files
+# carry real names, EmplIds, and ETS dates. They belong in the browser's
+# localStorage via /command/import — never in git.
+*roster*.csv
+*ROSTER*.csv
+*.xlsx
+*.xls
+mtarng-roster*
+**/personnel/**
+
+# OS noise
+.DS_Store
+Thumbs.db

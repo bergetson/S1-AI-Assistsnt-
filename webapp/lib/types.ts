@@ -165,6 +165,12 @@ export interface Position {
   id: number
   unit: string
   uic?: string
+  /** Brigade-level rollup from the MTOE extract. */
+  bde?: string
+  /** Battalion the unit belongs to — the real hierarchy, not inferred. */
+  bn?: string
+  /** MTOE paragraph-line, e.g. '001-01'. */
+  paraLine?: string
   city: string
   dutyTitle: string
   grade: string
@@ -175,6 +181,12 @@ export interface Position {
   isCommandOrKD: boolean
   statusType: ComponentStatus | 'Multiple'
   vacancyStatus: VacancyStatus
+  /**
+   * False for TEMPLET / 'Standard Excess' lines (AUTH=0) — a real soldier who
+   * is not against an authorized billet. Manning counts these as assigned but
+   * never as authorized, which is what surfaces over-strength.
+   */
+  authorized?: boolean
   projectedVacancyDate?: string
   secondaryMosOk?: string
   notes: string

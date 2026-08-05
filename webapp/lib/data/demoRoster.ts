@@ -268,4 +268,6 @@ export function buildDemoRoster(positions: Position[]): RosterSoldier[] {
  * first screen looks like a BN commander's actual span of control rather than a
  * statewide dump of 1,000+ rows.
  */
-export const DEMO_DEFAULT_UICS = ['WTCPT0', 'WTCPA0', 'WTCPB0', 'WTCPC0', 'WTCPD0', 'WTCPA1']
+export const DEMO_DEFAULT_UICS = [
+  'WTCPT0', 'WTCPA0', 'WTCPB0', 'WTCPC0', 'WTCPD0', 'WTCPA1', 'WTHAAA',
+]

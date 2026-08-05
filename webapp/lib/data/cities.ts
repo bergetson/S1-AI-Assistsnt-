@@ -5,6 +5,8 @@ export const MT_CITIES = [
   'Kalispell', 'Missoula', 'Miles City', 'Dillon', 'Havre',
   'Lewistown', 'Livingston', 'Glendive', 'Glasgow', 'Wolf Point',
   'Whitefish', 'Anaconda', 'Shelby',
+  // Added with the current MTOE extract — each hosts MTARNG billets.
+  'Malta', 'Libby', 'Culbertson',
 ]
 
 const rawPairs: CityPair[] = [
@@ -55,6 +57,34 @@ const rawPairs: CityPair[] = [
 
 // Symmetrize + same-city = 0
 const allPairs = new Map<string, CityPair>()
+// ── Drive times for the armory towns added with the current MTOE extract ─────
+// Malta and Culbertson sit on the US-2 Hi-Line; Libby is in the far northwest.
+// These are long hauls by design — they are exactly the commutes that make a
+// geographically honest match score matter in Montana.
+const newArmoryPairs: CityPair[] = [
+  { from: 'Malta', to: 'Havre',        miles: 89,  minutes: 90,  route: 'US-2 W' },
+  { from: 'Malta', to: 'Glasgow',      miles: 70,  minutes: 70,  route: 'US-2 E' },
+  { from: 'Malta', to: 'Great Falls',  miles: 199, minutes: 195, route: 'US-2 W / US-87 S' },
+  { from: 'Malta', to: 'Lewistown',    miles: 154, minutes: 160, route: 'US-191 S' },
+  { from: 'Malta', to: 'Helena',       miles: 288, minutes: 285, route: 'US-191 S / US-12 W' },
+  { from: 'Malta', to: 'Billings',     miles: 262, minutes: 265, route: 'US-191 S / I-90 E' },
+  { from: 'Malta', to: 'Wolf Point',   miles: 135, minutes: 130, route: 'US-2 E' },
+
+  { from: 'Libby', to: 'Kalispell',    miles: 91,  minutes: 105, route: 'US-2 E' },
+  { from: 'Libby', to: 'Whitefish',    miles: 87,  minutes: 100, route: 'US-2 E' },
+  { from: 'Libby', to: 'Missoula',     miles: 178, minutes: 195, route: 'MT-200 S / US-93 S' },
+  { from: 'Libby', to: 'Great Falls',  miles: 300, minutes: 310, route: 'US-2 E' },
+  { from: 'Libby', to: 'Helena',       miles: 279, minutes: 295, route: 'MT-200 S / I-15 S' },
+
+  { from: 'Culbertson', to: 'Wolf Point',  miles: 55,  minutes: 55,  route: 'US-2 W' },
+  { from: 'Culbertson', to: 'Glendive',    miles: 92,  minutes: 95,  route: 'MT-16 S' },
+  { from: 'Culbertson', to: 'Glasgow',     miles: 105, minutes: 105, route: 'US-2 W' },
+  { from: 'Culbertson', to: 'Miles City',  miles: 176, minutes: 180, route: 'MT-16 S / I-94 W' },
+  { from: 'Culbertson', to: 'Billings',    miles: 316, minutes: 315, route: 'MT-16 S / I-94 W' },
+  { from: 'Culbertson', to: 'Malta',       miles: 190, minutes: 185, route: 'US-2 W' },
+]
+rawPairs.push(...newArmoryPairs)
+
 for (const p of rawPairs) {
   allPairs.set(`${p.from}|${p.to}`, p)
   allPairs.set(`${p.to}|${p.from}`, { ...p, from: p.to, to: p.from })
@@ -65,14 +95,19 @@ for (const city of MT_CITIES) {
 
 export const cityPairs = Array.from(allPairs.values())
 
-// Fort Harrison (Ft William Harrison) is 5 mi / 10 min from Helena — alias it
-const CITY_ALIASES: Record<string, string> = { 'Fort Harrison': 'Helena' }
+// Fort Harrison (Ft William Harrison) is 5 mi / 10 min from Helena — alias it.
+// Belgrade is 8 mi from Bozeman, close enough that the commute is identical.
+const CITY_ALIASES: Record<string, string> = {
+  'Fort Harrison': 'Helena',
+  Belgrade: 'Bozeman',
+}
 function normalize(city: string): string { return CITY_ALIASES[city] ?? city }
 
 export function getCommute(from: string, to: string): { miles: number; minutes: number; route: string } | null {
   const f = normalize(from)
   const t = normalize(to)
-  if (f === t && from !== to) return { miles: 5, minutes: 10, route: 'Helena / Fort Harrison' }
+  // An aliased pair (Fort Harrison↔Helena, Belgrade↔Bozeman) is a short local hop.
+  if (f === t && from !== to) return { miles: 7, minutes: 12, route: `${from} / ${to}` }
   const pair = allPairs.get(`${f}|${t}`)
   if (pair) return { miles: pair.miles, minutes: pair.minutes, route: pair.route }
   return null

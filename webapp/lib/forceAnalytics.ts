@@ -73,7 +73,7 @@ export function listFormationUnits(positions: Position[], roster: RosterSoldier[
       u = { uic: p.uic, name: resolveUnitName(p.uic, nameMap), city: p.city, authorized: 0, assigned: 0 }
       byUic.set(p.uic, u)
     }
-    u.authorized++
+    if (p.authorized !== false) u.authorized++
   }
   for (const s of roster) {
     const u = byUic.get(s.uic)
@@ -83,48 +83,46 @@ export function listFormationUnits(positions: Position[], roster: RosterSoldier[
 }
 
 // ── Unit families ─────────────────────────────────────────────────────────────
-// The data encodes no parent/child field, but the hierarchy is recoverable: MTOE
-// names carry a battalion designator ('0163 IN BN     CO C RIFLE COMP') and UICs
-// share a 4-character prefix within a battalion (WTCPA0/B0/C0/D0/T0). Grouping on
-// those lets a commander select a whole battalion without hardcoding a hierarchy
-// that would go stale the moment the force structure changes.
+// The MTOE extract carries the real chain: BDE NAME → BN NAME → UIC. Grouping on
+// the actual battalion beats inferring one from UIC prefixes, so a commander
+// selects "1ST BATTALION, 163D INFANTRY REGIMENT" and gets exactly its UICs.
 
 export interface UnitFamily {
   key: string
   name: string
+  bde: string
   uics: string[]
   authorized: number
   assigned: number
 }
 
-/** Battalion designator embedded in an MTOE-style name, e.g. '0163 IN BN'. */
-function designatorOf(name: string): string | null {
-  const m = name.match(/^(\d{4}\s+[A-Z]{2}\s+(?:BN|CO|HHC|HHD|TM|DET)(?:\s+\d{2})?)/)
-  return m ? m[1].replace(/\s+/g, ' ').trim() : null
+/** Tidy the ALL-CAPS rollup names from the extract into something readable. */
+function tidyOrgName(raw: string): string {
+  return raw.replace(/\s+/g, ' ').replace(/\bROLLUP\b/gi, '').trim()
 }
 
 export function buildUnitFamilies(positions: Position[], roster: RosterSoldier[]): UnitFamily[] {
   const units = listFormationUnits(positions, roster)
-  const families = new Map<string, UnitFamily>()
+  // uic → battalion, from the billet data itself.
+  const bnOf = new Map<string, { bn: string; bde: string }>()
+  for (const p of positions) {
+    if (p.uic && p.bn && !bnOf.has(p.uic)) {
+      bnOf.set(p.uic, { bn: tidyOrgName(p.bn), bde: tidyOrgName(p.bde ?? '') })
+    }
+  }
 
+  const families = new Map<string, UnitFamily>()
   for (const u of units) {
-    const designator = designatorOf(u.name)
-    const key = designator ?? u.uic.slice(0, 4)
+    const org = bnOf.get(u.uic)
+    const key = org?.bn || u.uic
     let fam = families.get(key)
     if (!fam) {
-      fam = { key, name: designator ?? u.name, uics: [], authorized: 0, assigned: 0 }
+      fam = { key, name: org?.bn || u.name, bde: org?.bde ?? '', uics: [], authorized: 0, assigned: 0 }
       families.set(key, fam)
     }
     fam.uics.push(u.uic)
     fam.authorized += u.authorized
     fam.assigned += u.assigned
-  }
-
-  // A "family" of one is just the unit — use its own name so the picker reads cleanly.
-  for (const fam of families.values()) {
-    if (fam.uics.length === 1) {
-      fam.name = units.find(u => u.uic === fam.uics[0])?.name ?? fam.name
-    }
   }
 
   return [...families.values()].sort((a, b) => b.authorized - a.authorized)
@@ -187,6 +185,9 @@ export function computeManning(
   const catAsg = new Map<string, number>()
 
   for (const p of auth) {
+    // TEMPLET / 'Standard Excess' lines are real people but not authorizations.
+    // Counting them would hide over-strength by inflating the denominator.
+    if (p.authorized === false) continue
     gradeAuth.set(p.grade, (gradeAuth.get(p.grade) ?? 0) + 1)
     catAuth.set(p.careerCategory, (catAuth.get(p.careerCategory) ?? 0) + 1)
   }
@@ -199,7 +200,7 @@ export function computeManning(
     .sort((a, b) => (RANK_NUM[a] ?? 0) - (RANK_NUM[b] ?? 0))
   const cats: CareerCategory[] = ['Enlisted', 'Warrant', 'Officer']
 
-  const totalAuthorized = auth.length
+  const totalAuthorized = auth.filter(p => p.authorized !== false).length
   const totalAssigned = assigned.length
 
   return {
@@ -407,9 +408,9 @@ export function projectPromotions(
       const toGrade = ladder[i]
 
       const authorizedAtTarget = auth.filter(
-        p => p.careerCategory === category && p.grade === toGrade).length
+        p => p.authorized !== false && p.careerCategory === category && p.grade === toGrade).length
       const authorizedAtFeeder = auth.filter(
-        p => p.careerCategory === category && p.grade === fromGrade).length
+        p => p.authorized !== false && p.careerCategory === category && p.grade === fromGrade).length
       const atTarget = assigned.filter(s => s.careerCategory === category && s.rank === toGrade)
       const feeder = assigned.filter(s => s.careerCategory === category && s.rank === fromGrade)
 
@@ -605,7 +606,7 @@ export function summarizeForce(
   roster: RosterSoldier[],
   uics: string[]
 ): ForceSummary {
-  const auth = positionsInFormation(positions, uics)
+  const auth = positionsInFormation(positions, uics).filter(p => p.authorized !== false)
   const people = rosterInFormation(roster, uics)
   const n = people.length || 1
 
