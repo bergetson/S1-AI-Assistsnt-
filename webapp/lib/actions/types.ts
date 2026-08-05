@@ -44,6 +44,11 @@ export interface ActionItem {
   examples?: string[]
   /** Set when the finding is limited by missing data. */
   caveat?: string
+  /**
+   * The people behind the number. A count with no way to reach the names is a
+   * dead end — every item that is about soldiers carries them.
+   */
+  soldierIds?: string[]
 }
 
 export function sortActions(items: ActionItem[]): ActionItem[] {

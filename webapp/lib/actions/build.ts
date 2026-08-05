@@ -122,6 +122,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
       href: '/command/forecast',
       linkLabel: 'Open forecast',
       count: total,
+      soldierIds: [...new Set(clusterLoss.flatMap(c => c.f.soldierIds))],
       examples: clusterLoss.slice(0, 4).map(c => `${c.year}: ${c.f.detail}`),
     })
   }
@@ -183,6 +184,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
       href: '/command/roster',
       linkLabel: 'See who',
       count: stale.length,
+      soldierIds: stale.map(s => s.id),
       examples: fmtList(stale
         .sort((a, b) => b.timeInPosition - a.timeInPosition)
         .map(s => `${rankLabel(s.rank)} ${s.lastName} — ${s.timeInPosition} yr in ${s.dutyTitle}`)),
@@ -206,6 +208,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
       href: '/command/forecast',
       linkLabel: 'Open forecast',
       count: twoYear.length,
+      soldierIds: twoYear.map(s => s.id),
       caveat: 'An expiring contract is not a departure — most soldiers reenlist. These are risks, not losses.',
     })
   }
@@ -225,6 +228,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
       href: '/command/roster',
       linkLabel: 'Filter the roster',
       count: notMosq.length,
+      soldierIds: notMosq.map(s => s.id),
     })
   }
 

@@ -6,13 +6,14 @@ import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
 import {
   buildUnitFamilies, computeManning, summarizeForce, projectAttrition,
-  projectPromotions, rosterInFormation, hasServiceDates,
+  projectPromotions, rosterInFormation, hasServiceDates, isStaleInPosition, TIP_STALE_YEARS,
 } from '@/lib/forceAnalytics'
 import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
   CommandPrintStyles, useActiveRoster, useSeedFormation, useHydrated,
 } from '@/components/command/CommandShell'
 import { ActionFeed } from '@/components/shared/ActionFeed'
+import { SoldierDrawer, useSoldierDrawer } from '@/components/shared/SoldierDrawer'
 import { buildActions } from '@/lib/actions/build'
 import { actionsForRole } from '@/lib/actions/types'
 import { useForceData, AS_OF } from '@/components/shared/useForceData'
@@ -21,22 +22,28 @@ import { cn } from '@/lib/utils'
 
 const BASE_YEAR = 2026
 
-function Stat({ label, value, tone = 'default', hint }: {
+function Stat({ label, value, tone = 'default', hint, onClick }: {
   label: string; value: string | number
   tone?: 'default' | 'good' | 'warn' | 'bad'
   hint?: string
+  onClick?: () => void
 }) {
   const color =
     tone === 'good' ? 'text-green-700' :
     tone === 'warn' ? 'text-amber-600' :
     tone === 'bad' ? 'text-red-700' : 'text-gray-900'
-  return (
-    <div className="bg-white rounded-lg px-4 py-3 shadow-sm border text-center">
+  const body = (
+    <>
       <div className="text-xs text-gray-500 font-medium mb-1">{label}</div>
       <div className={cn('text-2xl font-bold', color)}>{value}</div>
       {hint && <div className="text-xs text-gray-400 mt-0.5">{hint}</div>}
-    </div>
+    </>
   )
+  const cls = 'bg-white rounded-lg px-4 py-3 shadow-sm border text-center w-full'
+  return onClick
+    ? <button onClick={onClick} className={cn(cls, 'hover:shadow-md hover:border-green-400 transition cursor-pointer')}
+        title="See these soldiers">{body}</button>
+    : <div className={cls}>{body}</div>
 }
 
 /** Authorized-vs-assigned bar. Hand-rolled to match the app's existing ScoreBar. */
@@ -63,6 +70,7 @@ export default function CommandOverviewPage() {
   const roster = useActiveRoster()
   const [search, setSearch] = useState('')
   const [showPicker, setShowPicker] = useState(false)
+  const drawer = useSoldierDrawer()
 
   const families = useMemo(() => buildUnitFamilies(positions, roster), [roster])
   const summary = useMemo(() => summarizeForce(positions, roster, selectedUics), [roster, selectedUics])
@@ -224,7 +232,15 @@ export default function CommandOverviewPage() {
           ) : (
             <>
               {/* Answers first. The numbers below are supporting detail. */}
-              {hydrated && <ActionFeed items={actions} />}
+              {hydrated && (
+                <ActionFeed
+                  items={actions}
+                  onShowSoldiers={item => {
+                    const ids = new Set(item.soldierIds ?? [])
+                    drawer.open(item.headline, inFormation.filter(s => ids.has(s.id)))
+                  }}
+                />
+              )}
 
               {/* ── Headline stats ── */}
               <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -234,11 +250,15 @@ export default function CommandOverviewPage() {
                   label="Fill Rate" value={`${summary.fillPct}%`}
                   tone={summary.fillPct >= 90 ? 'good' : summary.fillPct >= 75 ? 'default' : 'warn'}
                 />
-                <Stat label="Officers" value={summary.officers} hint={`${summary.warrants} warrant`} />
-                <Stat label="Enlisted" value={summary.enlisted} />
-                <Stat label="AGR" value={summary.agr} hint={`${summary.mday} M-Day`} />
+                <Stat label="Officers" value={summary.officers} hint={`${summary.warrants} warrant`}
+                  onClick={() => drawer.open('Officers', inFormation.filter(s => s.careerCategory === 'Officer'))} />
+                <Stat label="Enlisted" value={summary.enlisted}
+                  onClick={() => drawer.open('Enlisted', inFormation.filter(s => s.careerCategory === 'Enlisted'))} />
+                <Stat label="AGR" value={summary.agr} hint={`${summary.mday} M-Day`}
+                  onClick={() => drawer.open('AGR soldiers', inFormation.filter(s => s.componentStatus === 'AGR'))} />
                 <Stat
                   label="Not MOS-qualified" value={summary.flagged}
+                  onClick={() => drawer.open('Not MOS-qualified', inFormation.filter(s => s.flagged))}
                   tone={summary.flagged > 0 ? 'warn' : 'good'}
                 />
               </section>
@@ -256,13 +276,17 @@ export default function CommandOverviewPage() {
                       : 'Meet minimum TIG and TIS for their next grade. Review packets and senior rater support.'}
                   </p>
                 </Link>
-                <Link href="/command/roster" className="rounded-xl border border-amber-200 bg-amber-50 p-4 hover:shadow-md transition block">
+                <button onClick={() => drawer.open(
+                  `${TIP_STALE_YEARS}+ years in position`,
+                  inFormation.filter(isStaleInPosition),
+                  'Due for a move')}
+                  className="rounded-xl border border-amber-200 bg-amber-50 p-4 hover:shadow-md transition block text-left w-full">
                   <div className="text-3xl font-bold text-amber-700">{summary.staleInPosition}</div>
                   <div className="font-semibold text-amber-900 text-sm mt-1">3+ years in position</div>
                   <p className="text-xs text-amber-800 mt-1">
                     Due for a move. Stale assignments limit development and stall the whole bench behind them.
                   </p>
-                </Link>
+                </button>
                 <Link href="/command/forecast" className="rounded-xl border border-red-200 bg-red-50 p-4 hover:shadow-md transition block">
                   <div className="text-3xl font-bold text-red-700">{totalDepartures}</div>
                   <div className="font-semibold text-red-900 text-sm mt-1">
@@ -344,14 +368,22 @@ export default function CommandOverviewPage() {
                 ) : (
                   <div className="space-y-1.5">
                     {manning.byGrade.map(row => (
-                      <div key={row.key} className="flex items-center gap-3 text-sm">
+                      <button
+                        key={row.key}
+                        onClick={() => drawer.open(
+                          `${row.key} in your formation`,
+                          inFormation.filter(s => s.rank === row.key),
+                          `${row.assigned} assigned against ${row.authorized} authorized`)}
+                        className="w-full flex items-center gap-3 text-sm hover:bg-gray-50 rounded px-1 py-0.5 text-left"
+                        title={`See the ${row.assigned} soldiers at ${row.key}`}
+                      >
                         <span className="font-mono font-bold text-gray-700 w-10">{row.key}</span>
                         <div className="flex-1"><FillBar authorized={row.authorized} assigned={row.assigned} /></div>
                         <span className={cn('text-xs font-medium w-24 text-right',
                           row.delta < 0 ? 'text-red-600' : row.delta > 0 ? 'text-amber-600' : 'text-gray-400')}>
                           {row.delta === 0 ? 'on strength' : row.delta < 0 ? `short ${-row.delta}` : `over ${row.delta}`}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -372,6 +404,7 @@ export default function CommandOverviewPage() {
         </div>
       </div>
       <CommandPrintStyles />
+      <SoldierDrawer request={drawer.request} onClose={drawer.close} baseYear={BASE_YEAR} />
     </div>
   )
 }

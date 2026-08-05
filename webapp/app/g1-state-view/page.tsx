@@ -16,6 +16,7 @@ import { downloadCsv } from '@/lib/exports'
 import { rankLabel } from '@/lib/commandTypes'
 import { AS_OF } from '@/components/shared/useForceData'
 import { ActionFeed } from '@/components/shared/ActionFeed'
+import { SoldierDrawer, useSoldierDrawer } from '@/components/shared/SoldierDrawer'
 import { buildActions } from '@/lib/actions/build'
 import { actionsForRole } from '@/lib/actions/types'
 import { useMarketplaceStore } from '@/lib/marketplaceStore'
@@ -37,23 +38,33 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'heatmap', label: 'State Talent Heatmap' },
 ]
 
-function Bar({ value, max, label, count }: { value: number; max: number; label: string; count: string }) {
+function Bar({ value, max, label, count, onClick }: {
+  value: number; max: number; label: string; count: string; onClick?: () => void
+}) {
   const pct = max ? (value / max) * 100 : 0
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="w-40 truncate text-gray-700" title={label}>{label}</span>
+  const inner = (
+    <>
+      <span className="w-40 truncate text-gray-700 text-left" title={label}>{label}</span>
       <div className="flex-1 h-3 bg-gray-100 rounded overflow-hidden">
         <div className="h-full rounded" style={{ width: `${pct}%`, backgroundColor: GREEN }} />
       </div>
       <span className="w-24 text-right font-semibold text-gray-900">{count}</span>
-    </div>
+    </>
   )
+  const cls = 'flex items-center gap-2 text-xs w-full'
+  // Every bar is a way into the people behind it — a distribution that cannot be
+  // opened is just trivia.
+  return onClick
+    ? <button onClick={onClick} className={cn(cls, 'hover:bg-gray-50 rounded px-1 py-0.5')}
+        title="See these soldiers">{inner}</button>
+    : <div className={cls}>{inner}</div>
 }
 
 export default function G1StateViewPage() {
   const { positions, roster, civilianProfiles, isDemo } = useForceData()
   const [tab, setTab] = useState<Tab>('overview')
   const [f, setF] = useState<StateFilter>({})
+  const drawer = useSoldierDrawer()
 
   const filtered = useMemo(() => applyStateFilter(roster, positions, f), [roster, positions, f])
   const overview = useMemo(() => stateOverview(positions, roster, f), [positions, roster, f])
@@ -204,7 +215,11 @@ export default function G1StateViewPage() {
 
           {tab === 'overview' && (
             <>
-              <ActionFeed items={actions} title="Statewide priorities" limit={4} />
+              <ActionFeed items={actions} title="Statewide priorities" limit={4}
+                onShowSoldiers={item => {
+                  const ids = new Set(item.soldierIds ?? [])
+                  drawer.open(item.headline, filtered.filter(s => ids.has(s.id)))
+                }} />
 
               <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
@@ -224,22 +239,35 @@ export default function G1StateViewPage() {
                 <div className="bg-white rounded-xl border p-4 shadow-sm space-y-1.5">
                   <h2 className="font-bold text-gray-900 text-sm mb-2">Personnel category</h2>
                   {overview.byCategory.map(r => (
-                    <Bar key={r.key} label={r.key} value={r.count} max={maxCat} count={`${r.count} (${r.pct}%)`} />
+                    <Bar key={r.key} label={r.key} value={r.count} max={maxCat} count={`${r.count} (${r.pct}%)`}
+                      onClick={() => drawer.open(r.key, filtered.filter(s => s.careerCategory === r.key))} />
                   ))}
                 </div>
                 <div className="bg-white rounded-xl border p-4 shadow-sm space-y-1.5">
                   <h2 className="font-bold text-gray-900 text-sm mb-2">Component</h2>
                   {overview.byComponent.map(r => (
-                    <Bar key={r.key} label={r.key} value={r.count} max={maxCat} count={`${r.count} (${r.pct}%)`} />
+                    <Bar key={r.key} label={r.key} value={r.count} max={maxCat} count={`${r.count} (${r.pct}%)`}
+                      onClick={() => drawer.open(`${r.key} soldiers`, filtered.filter(s => s.componentStatus === r.key))} />
                   ))}
                 </div>
               </section>
               <section className="bg-white rounded-xl border p-4 shadow-sm space-y-1.5">
                 <h2 className="font-bold text-gray-900 text-sm mb-2">By battalion (click to drill down)</h2>
                 {overview.byBattalion.map(r => (
-                  <button key={r.key} onClick={() => set('bn', r.key)} className="w-full text-left">
-                    <Bar label={r.key} value={r.count} max={maxBn} count={`${r.count} (${r.pct}%)`} />
-                  </button>
+                  <div key={r.key} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Bar label={r.key} value={r.count} max={maxBn} count={`${r.count} (${r.pct}%)`}
+                        onClick={() => set('bn', r.key)} />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const uics = new Set(positions.filter(p => p.bn === r.key).map(p => p.uic))
+                        drawer.open(r.key, filtered.filter(s => uics.has(s.uic)))
+                      }}
+                      className="text-[11px] px-2 py-0.5 rounded border border-gray-300 hover:bg-gray-50 whitespace-nowrap">
+                      soldiers
+                    </button>
+                  </div>
                 ))}
               </section>
             </>
@@ -250,13 +278,15 @@ export default function G1StateViewPage() {
               <div className="bg-white rounded-xl border p-4 shadow-sm space-y-1.5">
                 <h2 className="font-bold text-gray-900 text-sm mb-2">By grade</h2>
                 {overview.byRank.map(r => (
-                  <Bar key={r.key} label={`${rankLabel(r.key)} (${r.key})`} value={r.count} max={maxRank} count={`${r.count}`} />
+                  <Bar key={r.key} label={`${rankLabel(r.key)} (${r.key})`} value={r.count} max={maxRank} count={`${r.count}`}
+                    onClick={() => drawer.open(`${rankLabel(r.key)} (${r.key})`, filtered.filter(s => s.rank === r.key))} />
                 ))}
               </div>
               <div className="bg-white rounded-xl border p-4 shadow-sm space-y-1.5">
                 <h2 className="font-bold text-gray-900 text-sm mb-2">Top MOS</h2>
                 {overview.byMos.slice(0, 18).map(r => (
-                  <Bar key={r.key} label={r.key} value={r.count} max={overview.byMos[0]?.count ?? 1} count={`${r.count}`} />
+                  <Bar key={r.key} label={r.key} value={r.count} max={overview.byMos[0]?.count ?? 1} count={`${r.count}`}
+                    onClick={() => drawer.open(`MOS ${r.key}`, filtered.filter(s => s.mos === r.key))} />
                 ))}
               </div>
             </section>
@@ -272,8 +302,9 @@ export default function G1StateViewPage() {
                 </thead>
                 <tbody>
                   {fts.slice(0, 60).map((r, i) => (
-                    <tr key={r.uic} className={i % 2 ? 'bg-gray-50' : ''}>
-                      <td className="px-3 py-1.5 text-xs">{r.unitName}</td>
+                    <tr key={r.uic} className={cn(i % 2 ? 'bg-gray-50' : '', 'cursor-pointer hover:bg-green-50')}
+                      onClick={() => drawer.open(r.unitName, filtered.filter(s => s.uic === r.uic), r.battalion)}>
+                      <td className="px-3 py-1.5 text-xs underline decoration-dotted">{r.unitName}</td>
                       <td className="px-3 py-1.5 text-xs text-gray-500 truncate max-w-[220px]">{r.battalion}</td>
                       <td className="px-3 py-1.5 text-xs text-right">{r.assigned}</td>
                       <td className="px-3 py-1.5 text-xs text-right">{r.agr}</td>
@@ -396,8 +427,12 @@ export default function G1StateViewPage() {
                   {heat.map(r => {
                     const intensity = Math.min(1, r.soldiers / (heat[0]?.soldiers || 1))
                     return (
-                      <tr key={r.county} style={{ backgroundColor: `rgba(27,79,42,${(intensity * 0.18).toFixed(3)})` }}>
-                        <td className="px-3 py-1.5 text-xs font-semibold">{r.county}</td>
+                      <tr key={r.county} style={{ backgroundColor: `rgba(27,79,42,${(intensity * 0.18).toFixed(3)})` }}
+                        className="cursor-pointer hover:brightness-95"
+                        onClick={() => drawer.open(`${r.county} County`,
+                          filtered.filter(s => countyForCity(s.city) === r.county),
+                          r.cities.join(', '))}>
+                        <td className="px-3 py-1.5 text-xs font-semibold underline decoration-dotted">{r.county}</td>
                         <td className="px-3 py-1.5 text-xs text-gray-500">{r.cities.join(', ')}</td>
                         <td className="px-3 py-1.5 text-xs text-right font-bold">{r.soldiers}</td>
                         <td className="px-3 py-1.5 text-xs text-right">{r.officers}</td>
@@ -416,6 +451,7 @@ export default function G1StateViewPage() {
           <PrototypeNotice scope="This statewide view" />
         </div>
       </div>
+      <SoldierDrawer request={drawer.request} onClose={drawer.close} baseYear={BASE_YEAR} />
     </div>
   )
 }

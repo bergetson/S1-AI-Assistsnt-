@@ -23,7 +23,10 @@ const URGENCY_CHIP: Record<Urgency, string> = {
   Monitor: 'bg-gray-400 text-white',
 }
 
-function Row({ item }: { item: ActionItem }) {
+function Row({ item, onShowSoldiers }: {
+  item: ActionItem
+  onShowSoldiers?: (item: ActionItem) => void
+}) {
   const [open, setOpen] = useState(false)
   const sev = SEV[item.severity]
   const hasDetail = Boolean(item.examples?.length || item.caveat)
@@ -52,13 +55,24 @@ function Row({ item }: { item: ActionItem }) {
                 <span className="font-semibold">Do this: </span>{item.action}
               </p>
             </div>
-            <Link
-              href={item.href}
-              className="text-sm px-3 py-2 rounded-lg text-white font-medium whitespace-nowrap flex-shrink-0"
-              style={{ backgroundColor: '#1B4F2A' }}
-            >
-              {item.linkLabel} →
-            </Link>
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              {item.soldierIds && item.soldierIds.length > 0 && onShowSoldiers && (
+                <button
+                  onClick={() => onShowSoldiers(item)}
+                  className="text-sm px-3 py-2 rounded-lg border-2 font-semibold whitespace-nowrap"
+                  style={{ borderColor: '#1B4F2A', color: '#1B4F2A' }}
+                >
+                  See the {item.soldierIds.length} soldiers
+                </button>
+              )}
+              <Link
+                href={item.href}
+                className="text-sm px-3 py-2 rounded-lg text-white font-medium whitespace-nowrap text-center"
+                style={{ backgroundColor: '#1B4F2A' }}
+              >
+                {item.linkLabel} →
+              </Link>
+            </div>
           </div>
 
           {hasDetail && (
@@ -95,12 +109,13 @@ function Row({ item }: { item: ActionItem }) {
 }
 
 export function ActionFeed({
-  items, title = 'What needs your attention', emptyMessage, limit,
+  items, title = 'What needs your attention', emptyMessage, limit, onShowSoldiers,
 }: {
   items: ActionItem[]
   title?: string
   emptyMessage?: string
   limit?: number
+  onShowSoldiers?: (item: ActionItem) => void
 }) {
   const [showAll, setShowAll] = useState(false)
   const cap = limit ?? 5
@@ -136,7 +151,7 @@ export function ActionFeed({
       </div>
 
       <ul className="space-y-2">
-        {shown.map(item => <Row key={item.id} item={item} />)}
+        {shown.map(item => <Row key={item.id} item={item} onShowSoldiers={onShowSoldiers} />)}
       </ul>
 
       {items.length > cap && (
