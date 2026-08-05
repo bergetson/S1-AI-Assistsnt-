@@ -10,6 +10,9 @@ import { analyzeDataQuality } from '@/lib/talent/dataQuality'
 import { isCredentialExpired, isCredentialExpiringSoon } from '@/lib/civilian/types'
 import { rulesNeedingReview } from '@/lib/rules/registry'
 import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
+import { ActionFeed } from '@/components/shared/ActionFeed'
+import { buildActions } from '@/lib/actions/build'
+import { actionsForRole } from '@/lib/actions/types'
 import { cn } from '@/lib/utils'
 
 const GREEN = '#1B4F2A'
@@ -72,6 +75,14 @@ export default function TalentDashboardPage() {
     return { expired, soon }
   }, [civilianProfiles])
 
+  const actions = useMemo(
+    () => actionsForRole(buildActions({
+      positions, roster, uics: [], civilian: civilianProfiles,
+      applications, baseYear: BASE_YEAR, asOfIso: AS_OF,
+    }), 'talent'),
+    [positions, roster, civilianProfiles, applications]
+  )
+
   const pendingReview = applications.filter(a =>
     a.status === 'Commander Review' || a.status === 'Talent Manager Review').length
   const rulesToReview = rulesNeedingReview()
@@ -92,6 +103,9 @@ export default function TalentDashboardPage() {
 
       <div className="px-8 py-6">
         <div className="max-w-[1400px] mx-auto space-y-6">
+
+          {/* Answers first — the counts below are supporting detail. */}
+          <ActionFeed items={actions} title="What needs your attention statewide" />
 
           <section>
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Vacancies</h2>

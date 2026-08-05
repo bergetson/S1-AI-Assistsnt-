@@ -15,6 +15,10 @@ import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
 import { rankLabel } from '@/lib/commandTypes'
 import { AS_OF } from '@/components/shared/useForceData'
+import { ActionFeed } from '@/components/shared/ActionFeed'
+import { buildActions } from '@/lib/actions/build'
+import { actionsForRole } from '@/lib/actions/types'
+import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { cn } from '@/lib/utils'
 
 const GREEN = '#1B4F2A'
@@ -65,6 +69,15 @@ export default function G1StateViewPage() {
     const uics = [...new Set(filtered.map(s => s.uic))]
     return singlePointsOfFailure(positions, filtered, uics, BASE_YEAR, 5, { limit: 150 })
   }, [positions, filtered])
+
+  const { applications } = useMarketplaceStore()
+  const actions = useMemo(
+    () => actionsForRole(buildActions({
+      positions, roster: filtered, uics: [...new Set(filtered.map(s => s.uic))],
+      civilian: civilianProfiles, applications, baseYear: BASE_YEAR, asOfIso: AS_OF,
+    }), 'g1'),
+    [positions, filtered, civilianProfiles, applications]
+  )
 
   const civRows = useMemo(
     () => filterCivilian(filtered, civilianProfiles, {}, AS_OF), [filtered, civilianProfiles])
@@ -191,6 +204,8 @@ export default function G1StateViewPage() {
 
           {tab === 'overview' && (
             <>
+              <ActionFeed items={actions} title="Statewide priorities" limit={4} />
+
               <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   { l: 'Total soldiers', v: overview.totalSoldiers },

@@ -12,6 +12,11 @@ import {
   ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
   CommandPrintStyles, useActiveRoster, useSeedFormation, useHydrated,
 } from '@/components/command/CommandShell'
+import { ActionFeed } from '@/components/shared/ActionFeed'
+import { buildActions } from '@/lib/actions/build'
+import { actionsForRole } from '@/lib/actions/types'
+import { useForceData, AS_OF } from '@/components/shared/useForceData'
+import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { cn } from '@/lib/utils'
 
 const BASE_YEAR = 2026
@@ -70,6 +75,16 @@ export default function CommandOverviewPage() {
   const promotions = useMemo(
     () => projectPromotions(positions, roster, selectedUics, BASE_YEAR, horizonYears),
     [roster, selectedUics, horizonYears]
+  )
+
+  const { civilianProfiles } = useForceData()
+  const { applications } = useMarketplaceStore()
+  const actions = useMemo(
+    () => actionsForRole(buildActions({
+      positions, roster, uics: selectedUics, civilian: civilianProfiles,
+      applications, baseYear: BASE_YEAR, asOfIso: AS_OF,
+    }), 'commander'),
+    [roster, selectedUics, civilianProfiles, applications]
   )
 
   const filteredFamilies = useMemo(() => {
@@ -208,6 +223,9 @@ export default function CommandOverviewPage() {
             </div>
           ) : (
             <>
+              {/* Answers first. The numbers below are supporting detail. */}
+              {hydrated && <ActionFeed items={actions} />}
+
               {/* ── Headline stats ── */}
               <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 <Stat label="Assigned" value={hydrated ? summary.assigned : '—'} />
