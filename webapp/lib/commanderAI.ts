@@ -2,6 +2,7 @@ import type { RosterSoldier, PromotionNeed, Candidate, ManningReport, AttritionY
 import type { Position } from './types'
 import type { ForceSummary } from './forceAnalytics'
 import { RETENTION_SOURCES } from './data/retention'
+import { rulesContext, AI_GOVERNANCE } from './rules/aiContext'
 
 // ── The anonymization boundary ────────────────────────────────────────────────
 // Everything above this line may hold real names. Nothing below it ever does.
@@ -122,9 +123,11 @@ Departure triggers modeled: AGR retention control point and officer removal for 
 == PROMOTION REQUIREMENT ${baseYear}–${baseYear + horizonYears} ==
 ${promoLines}
 
-== POLICY BASIS ==
-${RETENTION_SOURCES.map(s => `  - ${s}`).join('\n')}
-Promotion gates come from AR 600-8-19, AR 135-155, and NGR 600-101. PPOM 24-014 (Jun 2024) suspended BLC/ALC/SLC/MLC as hard promotion gates for SGT through MSG; SMC is still required for E9.
+${rulesContext()}
+
+Retention source documents: ${RETENTION_SOURCES.join(' · ')}
+
+${AI_GOVERNANCE}
 
 == GUIDANCE ==
 - Lead with the answer, then the reasoning. Commanders read the first line and decide whether to keep going.

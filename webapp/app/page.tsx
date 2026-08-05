@@ -282,8 +282,8 @@ export default function LandingPage() {
 
           {/* Description */}
           <p className="text-base text-white/70 max-w-2xl mx-auto leading-relaxed mb-10">
-            Steeves knows the MTARNG force structure, Montana's geography, Army PME requirements,
-            and what it actually takes to promote. Whether you're an E5 eyeing E7 or a CPT headed
+            Steeves knows the MTARNG force structure, Montana&apos;s geography, Army PME requirements,
+            and what it actually takes to promote. Whether you&apos;re an E5 eyeing E7 or a CPT headed
             toward battalion command — Steeves helps you plan the path and take the next step.
           </p>
 
@@ -364,8 +364,8 @@ export default function LandingPage() {
                 <p>
                   <strong className="text-gray-800">Ask Steeves</strong> is an AI-powered career
                   management system built specifically for Montana Army National Guard Soldiers.
-                  It combines real MTARNG force structure data with the Army's PME and promotion
-                  framework to give you advice that's <em>specific to your situation</em> —
+                  It combines real MTARNG force structure data with the Army&apos;s PME and promotion
+                  framework to give you advice that&apos;s <em>specific to your situation</em> —
                   not generic career guidance.
                 </p>
                 <p>
@@ -375,7 +375,7 @@ export default function LandingPage() {
                   before your next promotion board.
                 </p>
                 <p>
-                  Think of Steeves as the S1 NCO who's been around long enough to know everyone,
+                  Think of Steeves as the S1 NCO who&apos;s been around long enough to know everyone,
                   remember every TDA, and give you a straight answer — available 24/7.
                 </p>
               </div>
@@ -395,12 +395,12 @@ export default function LandingPage() {
               className="rounded-2xl p-8 text-white shadow-2xl"
               style={{ background: 'linear-gradient(145deg, #0D2614, #1B4F2A)' }}
             >
-              <div className="text-amber-400 text-5xl font-serif leading-none mb-4">"</div>
+              <div className="text-amber-400 text-5xl font-serif leading-none mb-4">&ldquo;</div>
               <blockquote className="text-lg leading-relaxed text-green-100 italic mb-6">
-                Sergeant, here's what I see. You've got 8 years in, two deployments, and your
-                ALC is still outstanding. You're within commute distance of three E6 vacancies —
-                one of them is a Squad Leader KD position in Helena. That's the move.
-                Get your ALC date locked in first. Here's how.
+                Sergeant, here&apos;s what I see. You&apos;ve got 8 years in, two deployments, and your
+                ALC is still outstanding. You&apos;re within commute distance of three E6 vacancies —
+                one of them is a Squad Leader KD position in Helena. That&apos;s the move.
+                Get your ALC date locked in first. Here&apos;s how.
               </blockquote>
               <div className="flex items-center gap-3 border-t border-white/20 pt-4">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-green-950"

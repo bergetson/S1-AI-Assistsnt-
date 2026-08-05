@@ -43,9 +43,13 @@ export default function AiMentorPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  // Credentials live in localStorage, which does not exist during the static
+  // export, so they can only be read after mount.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setCreds(getStoredCredentials())
     setClaudeKey(getStoredClaudeKey())
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
   // Claude (cheapest: Haiku) is the preferred provider; Ask Sage is fallback

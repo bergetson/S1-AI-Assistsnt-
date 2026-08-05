@@ -111,3 +111,79 @@ Edit `PROMOTION_GATES` in `lib/scoring.ts` and the promotion timeline block in `
 | `ASKSAGE_EMAIL` | GitHub Actions → `NEXT_PUBLIC_ASKSAGE_EMAIL` baked into build |
 
 In `.env.local` the variable is `ANTHROPIC_API_KEY` (used by the SDK server-side pattern in the README), but at runtime on Pages the browser reads `NEXT_PUBLIC_CLAUDE_API_KEY` from the build or `localStorage`.
+
+## Talent management layer (added in the prototype expansion)
+
+Four role views, switched by a navbar toggle backed by `lib/viewModeStore.ts`
+(`mtarng-viewmode`). `modeForPath()` makes the URL authoritative so deep links
+always render the right nav.
+
+| Route | Role | Purpose |
+|-------|------|---------|
+| `/civilian-profile` | Soldier | Civilian employment, skills, credentials, willingness |
+| `/marketplace` | Soldier | Published opportunities, express interest, apply |
+| `/skills` | All | Statewide civilian capability search + CSV export |
+| `/community-impact` | All | Potential community impact of an activation |
+| `/mission-builder` | All | Mission requirements → candidates → 3 deterministic COAs |
+| `/talent` | Talent Mgr | Vacancies, people, marketplace, data/policy health |
+| `/talent/vacancies` | Talent Mgr | Current + projected vacancies, candidate depth |
+| `/talent/marketplace` | Talent Mgr | Slate review, endorsements, status transitions |
+| `/talent/data-quality` | Talent Mgr | Detected issues, completeness, CSV export |
+| `/talent/rules` | Talent Mgr | Every policy rule with status and authority |
+| `/g1-state-view` | G1 | Statewide distribution, FTS balance, gaps, succession, heatmap |
+
+### Pure-logic modules (migration targets)
+
+```
+lib/civilian/        types · taxonomy · filters · demoData
+lib/communityImpact/ types · calculateImpact
+lib/mission/         types · matcher · coa
+lib/marketplace/     types · workflow · demoCycle
+lib/talent/          statewideAnalytics · succession · dataQuality
+lib/rules/           types · registry · aiContext
+lib/provenance.ts    lib/recommendation.ts    lib/exports.ts
+```
+
+All are framework-free and unit-tested. React components only present them.
+
+### Rules have exactly one source
+
+`lib/rules/registry.ts` wraps `PROMOTION_GATES` (scoring.ts) and
+`RETENTION_LIMITS` (data/retention.ts) in policy metadata — authority, status,
+citation. `lib/rules/aiContext.ts` **generates** the AI briefing from that same
+registry. Never restate a rule in prompt text; the two copies previously drifted.
+
+### Invariants the tests enforce
+
+Run `npm test` (105 tests). The non-obvious ones:
+
+- Missing data must produce `Unknown`, never a favorable default. Commute with no
+  route is marked `excluded`, not scored as neutral.
+- Community impact never has a negative-weight factor — nothing *reduces* risk.
+  Adding people from one employer can only raise it.
+- Analytics must be invariant to record order. `analyzeDataQuality` sorts inputs
+  canonically because duplicate detection reports the second record it sees.
+- Deterministic ranking must not change when a soldier's name changes.
+- Statewide totals must equal the sum of formation totals.
+
+### Demo data determinism
+
+`lib/data/demoRoster.ts` and `lib/civilian/demoData.ts` both use seeded
+mulberry32 PRNGs keyed on soldier id, and a fixed `BASE_YEAR`. Never introduce
+`Math.random()` or `Date.now()` — this is a static export, and nondeterminism
+becomes a hydration mismatch. Civilian profiles are keyed per soldier id so
+roster reordering cannot shift anyone's profile.
+
+### New store keys
+
+`mtarng-civilian` (soldier's own civilian profile), `mtarng-marketplace`
+(cycles + applications). Both follow the existing `create<T>()(persist(...))`
+shape with `{ name }` only.
+
+### Privacy boundary (unchanged, now enforced more widely)
+
+`lib/commanderAI.ts` is still the only place names cross into an AI payload, and
+they do not — `anonymizeSoldier()` emits `S-nnn` and `rehydrateNames()` maps back
+in the browser. `AI_GOVERNANCE` in `lib/rules/aiContext.ts` carries the standing
+limits (no orders, no invented data, no protected characteristics, self-reported
+never presented as verified).
