@@ -1,4 +1,5 @@
-import { allRules, rulesNeedingReview } from './registry'
+import { allRules, rulesNeedingReview, type RuleReviewInput } from './registry'
+import { tuningContext, type TuningOverrides } from './tuning'
 import type { RuleTopic } from './types'
 import { needsCaution } from './types'
 
@@ -7,15 +8,29 @@ import { needsCaution } from './types'
 // deterministic engines read. Previously the promotion gates were restated by
 // hand in the prompt text and drifted from the scoring table.
 
-export function rulesContext(topics: RuleTopic[] = ['Promotion', 'Retention', 'PME']): string {
-  const rules = allRules().filter(r => topics.includes(r.topic))
+export interface RulesContextOptions {
+  topics?: RuleTopic[]
+  /** Reviewer sign-offs, so a rule the S1 has verified is briefed as verified. */
+  reviews?: Record<string, RuleReviewInput>
+  /** Local changes to thresholds and weights, described so the model can cite them. */
+  overrides?: TuningOverrides
+}
+
+export function rulesContext(opts: RulesContextOptions | RuleTopic[] = {}): string {
+  // Accepts the old positional topics array so existing callers keep working.
+  const o: RulesContextOptions = Array.isArray(opts) ? { topics: opts } : opts
+  const topics = o.topics ?? ['Promotion', 'Retention', 'PME']
+  const rules = allRules(o.reviews).filter(r => topics.includes(r.topic))
   const lines = rules.map(r => {
     const caution = needsCaution(r) ? ` [${r.status.toUpperCase()} — do not present as settled policy]` : ''
-    return `  - ${r.id} (${r.sourceAuthority})${caution}: ${r.description}`
+    const signoff = r.reviewedBy ? ` [reviewed by ${r.reviewedBy}${r.lastReviewed ? ` on ${r.lastReviewed}` : ''}]` : ''
+    return `  - ${r.id} (${r.sourceAuthority})${caution}${signoff}: ${r.description}`
   })
-  const unverified = rulesNeedingReview().length
+  const unverified = rulesNeedingReview(o.reviews).length
   return `== POLICY RULES (generated from the prototype rule registry) ==
 ${lines.join('\n')}
+
+${tuningContext(o.overrides ?? {})}
 
 ${unverified} of these rules are draft, unverified, or planning assumptions rather than confirmed policy.
 When a conclusion depends on one of those, say so explicitly and recommend S1/G1 verification.

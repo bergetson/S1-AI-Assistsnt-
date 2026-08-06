@@ -21,6 +21,7 @@ import {
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
 } from '@/components/command/CommandShell'
 import { useForceData } from '@/components/shared/useForceData'
+import { useRulesStore } from '@/lib/rulesStore'
 import { cn } from '@/lib/utils'
 import { BASE_YEAR } from '@/components/shared/useForceData'
 
@@ -39,6 +40,9 @@ export default function CommandSuccessionPage() {
   useSeedFormation()
   const { selectedUics, horizonYears, shareEvalBullets, setShareEvalBullets } = useCommandStore()
   const { sources } = useForceData()
+  // version changes whenever an S1 retunes a gate or weight; the analytics
+  // tables are mutated in place, so nothing else invalidates these memos.
+  const { reviews, overrides, version } = useRulesStore()
   const roster = useActiveRoster()
 
   const [billetId, setBilletId] = useState<number | null>(null)
@@ -92,7 +96,11 @@ export default function CommandSuccessionPage() {
 
   const candidates = useMemo(
     () => (target ? rankCandidates(people, target, 10) : []),
-    [people, target]
+    // rulesVersion is load-bearing: retuning mutates PROMOTION_GATES and
+    // RETENTION_LIMITS in place, which React cannot observe. eslint sees the
+    // dep as unused because the mutation is invisible to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [people, target, version]
   )
 
   // What actually goes over the wire — rendered verbatim in the preview below.
@@ -114,9 +122,12 @@ export default function CommandSuccessionPage() {
       // Succession reasons only over military facts, so the civilian layer's
       // fidelity is not part of what the model is looking at.
       sources: sources.military,
+      reviews,
+      overrides,
     })
     return system + buildCandidateBlock(target, candidates)
-  }, [target, candidates, people, roster, selectedUics, horizonYears, sources])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, candidates, people, roster, selectedUics, horizonYears, sources, reviews, overrides, version])
 
   async function runAnalysis() {
     if (!target || loading) return

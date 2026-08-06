@@ -119,25 +119,49 @@ const STANDALONE: PolicyRule[] = [
   },
 ]
 
-let cached: PolicyRule[] | null = null
-
-export function allRules(): PolicyRule[] {
-  if (!cached) cached = [...promotionRules(), ...retentionRules(), ...STANDALONE]
-  return cached
+/**
+ * Not cached. The gate and retention tables are mutable — an S1 can retune them
+ * at runtime — so a cached rule list would keep describing the old numbers to
+ * both the UI and the AI, which is exactly the drift this registry exists to
+ * prevent. The list is ~40 objects; rebuilding it is free.
+ */
+export function allRules(reviews: Record<string, RuleReviewInput> = {}): PolicyRule[] {
+  const rules = [...promotionRules(), ...retentionRules(), ...STANDALONE]
+  return rules.map(r => {
+    const rev = reviews[r.id]
+    if (!rev) return r
+    // A reviewer's sign-off replaces the shipped status. This is how a Draft RCP
+    // becomes Verified once the S1 has actually checked it against the PPOM.
+    return {
+      ...r,
+      status: rev.status,
+      lastReviewed: rev.lastReviewed,
+      reviewedBy: rev.reviewedBy,
+      notes: rev.note ? `${r.notes ? `${r.notes} ` : ''}Reviewer: ${rev.note}` : r.notes,
+    }
+  })
 }
 
-export function rulesByTopic(topic: PolicyRule['topic']): PolicyRule[] {
-  return allRules().filter(r => r.topic === topic)
+/** Shape of a stored sign-off; mirrors RuleReview in lib/rulesStore. */
+export interface RuleReviewInput {
+  status: PolicyRule['status']
+  reviewedBy: string
+  lastReviewed: string
+  note?: string
 }
 
-export function getRule(id: string): PolicyRule | undefined {
-  return allRules().find(r => r.id === id)
+export function rulesByTopic(topic: PolicyRule['topic'], reviews?: Record<string, RuleReviewInput>): PolicyRule[] {
+  return allRules(reviews).filter(r => r.topic === topic)
+}
+
+export function getRule(id: string, reviews?: Record<string, RuleReviewInput>): PolicyRule | undefined {
+  return allRules(reviews).find(r => r.id === id)
 }
 
 /** Rules a reviewer should look at first. */
-export function rulesNeedingReview(): PolicyRule[] {
+export function rulesNeedingReview(reviews?: Record<string, RuleReviewInput>): PolicyRule[] {
   const order = { Superseded: 0, Outdated: 1, Draft: 2, Unverified: 3, Assumption: 4, Verified: 5 }
-  return allRules()
+  return allRules(reviews)
     .filter(r => r.status !== 'Verified')
     .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9))
 }

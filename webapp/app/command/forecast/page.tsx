@@ -13,6 +13,7 @@ import {
 } from '@/components/command/CommandShell'
 import { cn } from '@/lib/utils'
 import { BASE_YEAR } from '@/components/shared/useForceData'
+import { useRulesStore } from '@/lib/rulesStore'
 
 const CATEGORY_LABEL: Record<CareerCategory, string> = {
   Officer: 'Officer', Warrant: 'Warrant', Enlisted: 'Enlisted',
@@ -26,6 +27,9 @@ const REASON_COLOR: Record<string, string> = {
 }
 
 export default function CommandForecastPage() {
+  // Retuning a gate or weight mutates the analytics tables in place, so this
+  // version counter is what tells the memos below that their result is stale.
+  const rulesVersion = useRulesStore(st => st.version)
   useSeedFormation()
   const { selectedUics, horizonYears, setHorizon } = useCommandStore()
   const roster = useActiveRoster()
@@ -34,11 +38,19 @@ export default function CommandForecastPage() {
   const people = useMemo(() => rosterInFormation(roster, selectedUics), [roster, selectedUics])
   const attrition = useMemo(
     () => projectAttrition(people, BASE_YEAR, horizonYears),
-    [people, horizonYears]
+    // rulesVersion is load-bearing: retuning mutates PROMOTION_GATES and
+    // RETENTION_LIMITS in place, which React cannot observe. eslint sees the
+    // dep as unused because the mutation is invisible to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [people, horizonYears, rulesVersion]
   )
   const promotions = useMemo(
     () => projectPromotions(positions, roster, selectedUics, BASE_YEAR, horizonYears),
-    [roster, selectedUics, horizonYears]
+    // rulesVersion is load-bearing: retuning mutates PROMOTION_GATES and
+    // RETENTION_LIMITS in place, which React cannot observe. eslint sees the
+    // dep as unused because the mutation is invisible to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [roster, selectedUics, horizonYears, rulesVersion]
   )
 
   const maxLoss = Math.max(1, ...attrition.map(y => y.atRisk))

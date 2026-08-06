@@ -3,6 +3,8 @@ import type { Position } from './types'
 import type { ForceSummary } from './forceAnalytics'
 import { RETENTION_SOURCES } from './data/retention'
 import { rulesContext, AI_GOVERNANCE } from './rules/aiContext'
+import type { RuleReviewInput } from './rules/registry'
+import type { TuningOverrides } from './rules/tuning'
 import { isDemoFidelity, type DataSource } from './dataSources'
 
 // ── The anonymization boundary ────────────────────────────────────────────────
@@ -81,6 +83,10 @@ export interface CommanderContext {
    * the model the whole roster was fabricated when only the civilian layer is.
    */
   sources: DataSource[]
+  /** Reviewer sign-offs on policy rules, so a verified rule is briefed as verified. */
+  reviews?: Record<string, RuleReviewInput>
+  /** Local threshold/weight changes. The numbers above already reflect these. */
+  overrides?: TuningOverrides
 }
 
 /** Tell the model precisely which parts of its input are real. */
@@ -164,7 +170,7 @@ Departure triggers modeled: AGR retention control point and officer removal for 
 == PROMOTION REQUIREMENT ${baseYear}–${baseYear + horizonYears} ==
 ${promoLines}
 
-${rulesContext()}
+${rulesContext({ reviews: ctx.reviews, overrides: ctx.overrides })}
 
 Retention source documents: ${RETENTION_SOURCES.join(' · ')}
 

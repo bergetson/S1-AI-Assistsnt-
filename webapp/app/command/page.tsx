@@ -6,7 +6,7 @@ import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
 import {
   buildUnitFamilies, computeManning, summarizeForce, projectAttrition,
-  projectPromotions, rosterInFormation, hasServiceDates, isStaleInPosition, TIP_STALE_YEARS,
+  projectPromotions, rosterInFormation, hasServiceDates, isStaleInPosition, tipStaleYears,
 } from '@/lib/forceAnalytics'
 import {
   ARMY_GREEN, CommandHeader, RosterSourceBanner, RosterSourceWatermark, FormationBar,
@@ -20,6 +20,7 @@ import { useForceData, AS_OF } from '@/components/shared/useForceData'
 import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { cn } from '@/lib/utils'
 import { BASE_YEAR } from '@/components/shared/useForceData'
+import { useRulesStore } from '@/lib/rulesStore'
 
 
 function Stat({ label, value, tone = 'default', hint, onClick }: {
@@ -64,6 +65,9 @@ function FillBar({ authorized, assigned }: { authorized: number; assigned: numbe
 }
 
 export default function CommandOverviewPage() {
+  // Retuning a gate or weight mutates the analytics tables in place, so this
+  // version counter is what tells the memos below that their result is stale.
+  const rulesVersion = useRulesStore(st => st.version)
   useSeedFormation()
   const hydrated = useHydrated()
   const { selectedUics, setSelectedUics, toggleUic, clearFormation, horizonYears, source } = useCommandStore()
@@ -78,11 +82,19 @@ export default function CommandOverviewPage() {
   const inFormation = useMemo(() => rosterInFormation(roster, selectedUics), [roster, selectedUics])
   const attrition = useMemo(
     () => projectAttrition(inFormation, BASE_YEAR, horizonYears),
-    [inFormation, horizonYears]
+    // rulesVersion is load-bearing: retuning mutates PROMOTION_GATES and
+    // RETENTION_LIMITS in place, which React cannot observe. eslint sees the
+    // dep as unused because the mutation is invisible to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inFormation, horizonYears, rulesVersion]
   )
   const promotions = useMemo(
     () => projectPromotions(positions, roster, selectedUics, BASE_YEAR, horizonYears),
-    [roster, selectedUics, horizonYears]
+    // rulesVersion is load-bearing: retuning mutates PROMOTION_GATES and
+    // RETENTION_LIMITS in place, which React cannot observe. eslint sees the
+    // dep as unused because the mutation is invisible to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [roster, selectedUics, horizonYears, rulesVersion]
   )
 
   const { civilianProfiles } = useForceData()
@@ -277,7 +289,7 @@ export default function CommandOverviewPage() {
                   </p>
                 </Link>
                 <button onClick={() => drawer.open(
-                  `${TIP_STALE_YEARS}+ years in position`,
+                  `${tipStaleYears()}+ years in position`,
                   inFormation.filter(isStaleInPosition),
                   'Due for a move')}
                   className="rounded-xl border border-amber-200 bg-amber-50 p-4 hover:shadow-md transition block text-left w-full">

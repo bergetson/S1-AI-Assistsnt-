@@ -7,6 +7,7 @@ import type {
 import { SR_BOX_WEIGHT, RATER_BOX_WEIGHT } from './commandTypes'
 import { RANK_NUM, PROMOTION_GATES } from './scoring'
 import { retentionCapYears, commissionedCap, RETIREMENT_YEARS } from './data/retention'
+import { activeRanking, activeAssumptions } from './rules/tuning'
 import { getCommute } from './data/cities'
 
 // ── Unit naming ───────────────────────────────────────────────────────────────
@@ -216,8 +217,13 @@ export function computeManning(
 }
 
 // ── Time in grade / time in position flags ────────────────────────────────────
-/** Years past which a soldier is considered stale in seat and ready to move. */
+/** Shipped default. Read tipStaleYears() instead — an S1 can change it. */
 export const TIP_STALE_YEARS = 3
+
+/** Years past which a soldier is considered stale in seat and ready to move. */
+export function tipStaleYears(): number {
+  return activeAssumptions().tipStaleYears
+}
 
 /**
  * True only when the record actually carries the service clocks. The MTOE
@@ -250,7 +256,7 @@ export function isBoardEligible(s: RosterSoldier): boolean {
 }
 
 export function isStaleInPosition(s: RosterSoldier): boolean {
-  return s.timeInPosition >= TIP_STALE_YEARS
+  return s.timeInPosition >= tipStaleYears()
 }
 
 // ── Grade ladders ─────────────────────────────────────────────────────────────
@@ -285,6 +291,7 @@ function etsYear(ets: string): number | null {
 // majority of soldiers reenlist — and reaching 20 good years makes retirement
 // possible, not automatic. Counting either as a whole loss produces the absurd
 // result that the entire formation departs within one contract cycle.
+/** Shipped defaults. The live values come from activeAssumptions(). */
 export const ETS_SEPARATION_RATE = 0.30    // ~70% reenlist
 export const TWENTY_YEAR_DEPART_RATE = 0.25
 const HARD_WEIGHT = 1.0
@@ -331,7 +338,7 @@ export function earliestDeparture(
     candidates.push({
       soldier: s, year: ey, reason: 'ETS',
       detail: `Contract expires ${s.ets} — most soldiers reenlist`,
-      certainty: 'projected', weight: ETS_SEPARATION_RATE,
+      certainty: 'projected', weight: activeAssumptions().etsSeparationRate,
     })
   }
 
@@ -342,13 +349,13 @@ export function earliestDeparture(
     candidates.push({
       soldier: s, year: baseYear + Math.ceil(yearsAway), reason: 'Retirement eligible (20 yr)',
       detail: `Reaches 20 good years (currently ${s.yearsOfService} TIS)`,
-      certainty: 'projected', weight: TWENTY_YEAR_DEPART_RATE,
+      certainty: 'projected', weight: activeAssumptions().twentyYearDepartRate,
     })
   } else {
     candidates.push({
       soldier: s, year: baseYear, reason: 'Retirement eligible (20 yr)',
       detail: `Already retirement eligible (${s.yearsOfService} TIS)`,
-      certainty: 'projected', weight: TWENTY_YEAR_DEPART_RATE,
+      certainty: 'projected', weight: activeAssumptions().twentyYearDepartRate,
     })
   }
 
@@ -493,7 +500,8 @@ function evalWeight(s: RosterSoldier): number {
   // Officers/warrants: senior rater box dominates, rater box modulates.
   const sr = SR_BOX_WEIGHT[s.srBox] ?? 35
   const rater = RATER_BOX_WEIGHT[s.raterBox] ?? 30
-  return sr * 0.7 + rater * 0.3
+  const share = activeAssumptions().seniorRaterShare
+  return sr * share + rater * (1 - share)
 }
 
 /**
@@ -508,6 +516,10 @@ export function rankCandidates(
 ): Candidate[] {
   const targetNum = RANK_NUM[target.grade] ?? 0
   const gate = PROMOTION_GATES[target.grade]
+  // Read once per call: every candidate in this slate must be judged by the
+  // same weights, even if a reviewer saves a change while the page is open.
+  const w = activeRanking()
+  const staleAt = activeAssumptions().tipStaleYears
 
   // Never offer the commander someone who already holds the billet.
   const pool = roster.filter(s => s.positionId !== target.id)
@@ -525,59 +537,59 @@ export function rankCandidates(
       blockers.push(`${s.careerCategory} soldier cannot fill a ${target.careerCategory} billet`)
       gradeDetail = 'Wrong career category'
     } else if (delta === 0) {
-      gradePts = 30; gradeDetail = `Already ${s.rank} — lateral move`
+      gradePts = w.gradeExact; gradeDetail = `Already ${s.rank} — lateral move`
     } else if (delta === 1) {
-      gradePts = 26; gradeDetail = `${s.rank} promotable into ${target.grade}`
+      gradePts = w.gradeOneBelow; gradeDetail = `${s.rank} promotable into ${target.grade}`
     } else if (delta === 2) {
-      gradePts = 10; gradeDetail = `${s.rank} is two grades below ${target.grade}`
+      gradePts = w.gradeTwoBelow; gradeDetail = `${s.rank} is two grades below ${target.grade}`
       blockers.push(`Two grades below the billet (${s.rank} → ${target.grade})`)
     } else if (delta < 0) {
-      gradePts = 6; gradeDetail = `${s.rank} would be a downgrade into ${target.grade}`
+      gradePts = w.gradeDowngrade; gradeDetail = `${s.rank} would be a downgrade into ${target.grade}`
     } else {
       gradeDetail = `${s.rank} is too junior for ${target.grade}`
       blockers.push(`More than two grades below the billet`)
     }
-    factors.push({ label: 'Grade fit', points: gradePts, max: 30, detail: gradeDetail })
+    factors.push({ label: 'Grade fit', points: gradePts, max: w.gradeExact, detail: gradeDetail })
 
     // ── MOS fit (20) ──────────────────────────────────────────────────────────
     let mosPts = 0
     let mosDetail = ''
-    if (s.mos === target.mos) { mosPts = 20; mosDetail = `MOS ${s.mos} matches exactly` }
-    else if (mosRelated(s.mos, target.mos)) { mosPts = 12; mosDetail = `${s.mos} is in the same field as ${target.mos}` }
-    else { mosPts = 3; mosDetail = `${s.mos} → ${target.mos} would require reclassification` }
-    factors.push({ label: 'MOS fit', points: mosPts, max: 20, detail: mosDetail })
+    if (s.mos === target.mos) { mosPts = w.mosExact; mosDetail = `MOS ${s.mos} matches exactly` }
+    else if (mosRelated(s.mos, target.mos)) { mosPts = w.mosRelated; mosDetail = `${s.mos} is in the same field as ${target.mos}` }
+    else { mosPts = w.mosUnrelated; mosDetail = `${s.mos} → ${target.mos} would require reclassification` }
+    factors.push({ label: 'MOS fit', points: mosPts, max: w.mosExact, detail: mosDetail })
 
     // ── Promotion readiness (20) ──────────────────────────────────────────────
     let tigPts = 0
     let tigDetail = ''
     if (delta <= 0) {
-      tigPts = 20; tigDetail = 'Already holds the grade — no gate to clear'
+      tigPts = w.promotionReady; tigDetail = 'Already holds the grade — no gate to clear'
     } else if (gate) {
       const tigOk = s.timeInGrade >= gate.minTig
       const tisOk = s.yearsOfService >= gate.minTis
-      if (tigOk && tisOk) { tigPts = 20; tigDetail = `Meets ${target.grade} gates (${s.timeInGrade} yr TIG, ${s.yearsOfService} yr TIS)` }
-      else if (tigOk || tisOk) { tigPts = 10; tigDetail = `Partially eligible — needs ${tigOk ? `${gate.minTis} yr TIS` : `${gate.minTig} yr TIG`}` }
-      else { tigPts = 2; tigDetail = `Short of both TIG (${gate.minTig} yr) and TIS (${gate.minTis} yr) gates` }
+      if (tigOk && tisOk) { tigPts = w.promotionReady; tigDetail = `Meets ${target.grade} gates (${s.timeInGrade} yr TIG, ${s.yearsOfService} yr TIS)` }
+      else if (tigOk || tisOk) { tigPts = w.promotionPartial; tigDetail = `Partially eligible — needs ${tigOk ? `${gate.minTis} yr TIS` : `${gate.minTig} yr TIG`}` }
+      else { tigPts = w.promotionShort; tigDetail = `Short of both TIG (${gate.minTig} yr) and TIS (${gate.minTis} yr) gates` }
     } else {
-      tigPts = 12; tigDetail = 'No published gate for this grade'
+      tigPts = w.promotionNoGate; tigDetail = 'No published gate for this grade'
     }
-    factors.push({ label: 'Promotion readiness', points: tigPts, max: 20, detail: tigDetail })
+    factors.push({ label: 'Promotion readiness', points: tigPts, max: w.promotionReady, detail: tigDetail })
 
     // ── Evaluations (20) ──────────────────────────────────────────────────────
     const evalRaw = evalWeight(s)
-    const evalPts = Math.round((evalRaw / 100) * 20)
+    const evalPts = Math.round((evalRaw / 100) * w.evaluationsMax)
     const evalLabel = s.careerCategory === 'Enlisted'
       ? (s.ncoerBox || 'unrated')
       : `${s.srBox || 'unrated'}${s.raterBox ? ` / ${s.raterBox}` : ''}`
-    factors.push({ label: 'Evaluations', points: evalPts, max: 20, detail: `Latest: ${evalLabel}` })
+    factors.push({ label: 'Evaluations', points: evalPts, max: w.evaluationsMax, detail: `Latest: ${evalLabel}` })
 
     // ── Availability: time in current seat (10) ───────────────────────────────
     let tipPts = 0
     let tipDetail = ''
-    if (s.timeInPosition >= TIP_STALE_YEARS) { tipPts = 10; tipDetail = `${s.timeInPosition} yr in current seat — due to move` }
-    else if (s.timeInPosition >= 1.5) { tipPts = 7; tipDetail = `${s.timeInPosition} yr in current seat` }
-    else { tipPts = 2; tipDetail = `Only ${s.timeInPosition} yr in current seat — recently assigned` }
-    factors.push({ label: 'Availability', points: tipPts, max: 10, detail: tipDetail })
+    if (s.timeInPosition >= staleAt) { tipPts = w.availabilityStale; tipDetail = `${s.timeInPosition} yr in current seat — due to move` }
+    else if (s.timeInPosition >= 1.5) { tipPts = w.availabilityMid; tipDetail = `${s.timeInPosition} yr in current seat` }
+    else { tipPts = w.availabilityRecent; tipDetail = `Only ${s.timeInPosition} yr in current seat — recently assigned` }
+    factors.push({ label: 'Availability', points: tipPts, max: w.availabilityStale, detail: tipDetail })
 
     // ── Geography (bonus, folded into the 100) ────────────────────────────────
     const commute = getCommute(s.city, target.city)
@@ -586,10 +598,10 @@ export function rankCandidates(
     let geoPts = 0
     let geoDetail = ''
     if (sameCity) { geoPts = 0; geoDetail = `Already in ${target.city}` }
-    else if (mins >= 0 && mins <= 60) { geoPts = -1; geoDetail = `${mins} min from ${target.city}` }
-    else if (mins >= 0 && mins <= 120) { geoPts = -3; geoDetail = `${mins} min from ${target.city}` }
-    else if (mins >= 0) { geoPts = -6; geoDetail = `${mins} min from ${target.city} — significant move` }
-    else { geoPts = -3; geoDetail = `${s.city} → ${target.city}, drive time unknown` }
+    else if (mins >= 0 && mins <= 60) { geoPts = w.geoUnder60; geoDetail = `${mins} min from ${target.city}` }
+    else if (mins >= 0 && mins <= 120) { geoPts = w.geoUnder120; geoDetail = `${mins} min from ${target.city}` }
+    else if (mins >= 0) { geoPts = w.geoOver120; geoDetail = `${mins} min from ${target.city} — significant move` }
+    else { geoPts = w.geoUnknown; geoDetail = `${s.city} → ${target.city}, drive time unknown` }
     factors.push({ label: 'Geography', points: geoPts, max: 0, detail: geoDetail })
 
     if (s.flagged) blockers.push('Flagged — not eligible for favorable actions')
@@ -599,8 +611,8 @@ export function rankCandidates(
 
     const readiness: Candidate['readiness'] =
       blockers.length > 0 ? 'Not ready'
-      : score >= 70 ? 'Ready now'
-      : score >= 45 ? 'Ready with development'
+      : score >= w.readyNowScore ? 'Ready now'
+      : score >= w.readyDevelopmentScore ? 'Ready with development'
       : 'Not ready'
 
     return { soldier: s, score, factors, blockers, readiness }

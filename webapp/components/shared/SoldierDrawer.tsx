@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { RosterSoldier } from '@/lib/commandTypes'
 import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import { RANK_NUM } from '@/lib/scoring'
-import { boardEligibility, isStaleInPosition, earliestDeparture, TIP_STALE_YEARS } from '@/lib/forceAnalytics'
+import { boardEligibility, isStaleInPosition, earliestDeparture, tipStaleYears } from '@/lib/forceAnalytics'
 import { countyForCity } from '@/lib/communityImpact/types'
 import { downloadCsv } from '@/lib/exports'
 import { exportBanner } from '@/lib/dataSources'
@@ -209,7 +209,7 @@ export function SoldierDrawer({
                           )}
                           {stale && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"
-                              title={`${TIP_STALE_YEARS}+ years in position`}>Move</span>
+                              title={`${tipStaleYears()}+ years in position`}>Move</span>
                           )}
                           {dep && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-800"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Navbar from '@/components/Navbar';
+import { TuningBoot } from '@/components/shared/TuningBoot';
 import './globals.css';
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body className="min-h-screen bg-gray-50 antialiased">
+        <TuningBoot />
         <Navbar />
         <main className="pt-16">{children}</main>
       </body>

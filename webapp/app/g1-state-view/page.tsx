@@ -21,6 +21,7 @@ import { buildActions } from '@/lib/actions/build'
 import { actionsForRole } from '@/lib/actions/types'
 import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { cn } from '@/lib/utils'
+import { useRulesStore } from '@/lib/rulesStore'
 
 const GREEN = '#1B4F2A'
 const sel = 'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700'
@@ -61,6 +62,9 @@ function Bar({ value, max, label, count, onClick }: {
 }
 
 export default function G1StateViewPage() {
+  // Retuning a gate or weight mutates the analytics tables in place, so this
+  // version counter is what tells the memos below that their result is stale.
+  const rulesVersion = useRulesStore(st => st.version)
   const { positions, roster, civilianProfiles, sources } = useForceData()
   const [tab, setTab] = useState<Tab>('overview')
   const [f, setF] = useState<StateFilter>({})
@@ -73,7 +77,8 @@ export default function G1StateViewPage() {
   const fts = useMemo(() => fullTimeSupportByUnit(positions, filtered), [positions, filtered])
   const gaps = useMemo(() => mosGaps(positions, filtered), [positions, filtered])
   const pipeline = useMemo(() => promotionPipeline(positions, filtered), [positions, filtered])
-  const heat = useMemo(() => geoHeatTable(filtered, BASE_YEAR, 5), [filtered])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- see rulesVersion note above
+  const heat = useMemo(() => geoHeatTable(filtered, BASE_YEAR, 5), [filtered, rulesVersion])
 
   const spof = useMemo(() => {
     const uics = [...new Set(filtered.map(s => s.uic))]
