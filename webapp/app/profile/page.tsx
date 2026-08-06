@@ -14,7 +14,6 @@ const RANKS = {
   Officer:  ['O1','O2','O3','O4','O5','O6'],
 }
 
-const ALL_RANKS = [...RANKS.Enlisted, ...RANKS.Warrant, ...RANKS.Officer]
 
 const COMPONENT_STATUSES: ComponentStatus[] = ['M-Day', 'AGR', 'Technician', 'ADOS', 'IRR']
 const COMMUTE_LIMITS: CommuteLimit[] = ['30 Minutes', '1 Hour', '1.5 Hours', '2 Hours', '3 Hours', 'No Limit']

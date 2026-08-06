@@ -19,8 +19,9 @@ import {
   type PhaseTiming,
 } from '@/lib/careerPlanner'
 import { cn } from '@/lib/utils'
+import { AS_OF_YEAR } from '@/lib/asOf'
 
-const CURRENT_YEAR = new Date().getFullYear()
+const CURRENT_YEAR = AS_OF_YEAR
 const ENLISTED_RANKS = ['E4', 'E5', 'E6', 'E7']
 
 function dwellLabel(y: number): string {

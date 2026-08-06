@@ -1,6 +1,7 @@
 import type { CareerCategory, ComponentStatus } from './types'
 import type { RosterSoldier, SrBox, RaterBox, NcoerBox } from './commandTypes'
 import { RANK_NUM } from './scoring'
+import { asOfDate } from './asOf'
 
 // ── CSV roster import ─────────────────────────────────────────────────────────
 // Hand-rolled rather than pulling in a parser dependency. The grammar we need is
@@ -63,7 +64,11 @@ const HEADER_ALIASES: Record<string, string[]> = {
   timeInGrade: ['tig', 'time in grade', 'time_in_grade'],
   timeInPosition: ['tip', 'time in position', 'time_in_position', 'months in position'],
   commissionedYears: ['commissioned years', 'commissioned service', 'tcs', 'years commissioned'],
-  pebd: ['pebd', 'basic pay entry date', 'bpd'],
+  pebd: ['pebd', 'basic pay entry date', 'bpd', 'basd', 'pay entry base date'],
+  // Personnel systems export dates, not decimals. Without these two the whole
+  // app degrades to Unknown, because time in grade and time in service are what
+  // every promotion, board, and retirement projection is built on.
+  dor: ['dor', 'date of rank', 'date_of_rank', 'grade date', 'rank date'],
   ets: ['ets', 'ets date', 'etsdate', 'expiration term of service'],
   srBox: ['sr box', 'senior rater', 'sr', 'senior rater box', 'sr box check'],
   raterBox: ['rater box', 'rater', 'rater assessment'],
@@ -96,6 +101,24 @@ function num(v: string | undefined, fallback = 0): number {
   if (!v) return fallback
   const n = Number(String(v).replace(/[^0-9.\-]/g, ''))
   return Number.isFinite(n) ? n : fallback
+}
+
+/**
+ * Years between a date and the extract date, or null if the value is not a date
+ * we can read. Null matters: it keeps "column absent" distinct from "zero
+ * years", which is the distinction the rest of the app is built on.
+ */
+export function yearsSince(raw: string | undefined, asOf: Date = asOfDate()): number | null {
+  if (!raw) return null
+  const s = raw.trim()
+  if (!s) return null
+  // Accept ISO (2016-06-01), US (06/01/2016), and DD-MON-YYYY (01-JUN-2016).
+  const t = Date.parse(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(s) ? s.replace(/-/g, ' ') : s)
+  if (!Number.isFinite(t)) return null
+  const years = (asOf.getTime() - t) / (365.25 * 24 * 3600 * 1000)
+  // A future date or an implausibly long career is bad data, not a clock.
+  if (years < 0 || years > 45) return null
+  return Math.round(years * 10) / 10
 }
 
 function bool(v: string | undefined): boolean {
@@ -180,7 +203,9 @@ export interface ImportResult {
 }
 
 const REQUIRED = ['rank', 'uic']
-const RECOMMENDED = ['lastName', 'mos', 'yearsOfService', 'timeInGrade', 'timeInPosition', 'ets']
+// Either the date or the decimal satisfies a clock, so neither is listed alone.
+// The dates are what a personnel system exports, so they are named first.
+const RECOMMENDED = ['lastName', 'mos', 'pebd', 'dor', 'ets', 'timeInPosition']
 
 export function importRosterCsv(text: string): ImportResult {
   const errors: ImportIssue[] = []
@@ -227,9 +252,24 @@ export function importRosterCsv(text: string): ImportResult {
     }
 
     const careerCategory = categoryFor(rank, get(r, 'careerCategory'))
-    const tis = num(get(r, 'yearsOfService'))
-    const tig = num(get(r, 'timeInGrade'))
+
+    // Prefer an explicit decimal column, but fall back to deriving the clock
+    // from the date the personnel system actually exports. Before this, a
+    // straight SIDPERS extract — which carries PEBD and DOR and no decimals —
+    // imported as TIS 0 / TIG 0 for every soldier, and the app then correctly
+    // but uselessly reported the entire formation as Unknown.
+    const pebdRaw = get(r, 'pebd')
+    const dorRaw = get(r, 'dor')
+    const tis = num(get(r, 'yearsOfService')) || (yearsSince(pebdRaw) ?? 0)
+    const tig = num(get(r, 'timeInGrade')) || (yearsSince(dorRaw) ?? 0)
     let tip = num(get(r, 'timeInPosition'))
+
+    if (tis === 0 && pebdRaw) {
+      warnings.push({ row: rowNum, message: `Could not read PEBD "${pebdRaw}" as a date — time in service left Unknown.` })
+    }
+    if (tig === 0 && dorRaw) {
+      warnings.push({ row: rowNum, message: `Could not read date of rank "${dorRaw}" as a date — time in grade left Unknown.` })
+    }
 
     // A "months in position" column is common; convert when the number is implausible as years.
     const tipHeader = cols.timeInPosition !== undefined ? normalizeHeader(rows[0][cols.timeInPosition]) : ''
@@ -258,7 +298,7 @@ export function importRosterCsv(text: string): ImportResult {
       timeInGrade: tig,
       timeInPosition: tip,
       commissionedYears: num(get(r, 'commissionedYears'), careerCategory === 'Officer' ? tis : 0),
-      pebd: get(r, 'pebd') ?? '',
+      pebd: pebdRaw ?? '',
       ets: get(r, 'ets') ?? '',
       srBox: srBoxFor(get(r, 'srBox')),
       raterBox: raterBoxFor(get(r, 'raterBox')),
@@ -282,13 +322,15 @@ export function importRosterCsv(text: string): ImportResult {
 /** The template a commander can download and fill in. */
 export const CSV_TEMPLATE_HEADERS = [
   'last_name', 'first_name', 'rank', 'category', 'mos', 'component', 'uic', 'unit',
-  'city', 'duty_title', 'tis', 'tig', 'tip', 'commissioned_years', 'pebd', 'ets',
+  'city', 'duty_title', 'pebd', 'dor', 'ets', 'tis', 'tig', 'tip', 'commissioned_years',
   'sr_box', 'rater_box', 'ncoer', 'pme', 'promotable', 'flagged', 'eval_bullets', 'notes',
 ]
 
+// Row 1 shows the normal case: give the dates and let the app do the arithmetic.
+// Row 2 shows precomputed decimals, which still work and win if both are given.
 export const CSV_TEMPLATE_SAMPLE = [
-  'Whitaker,Marcus,CPT,Officer,42A,AGR,WPBQAA,0495 CS HHC,Kalispell,S1 OIC,9.5,3.2,1.8,9.5,2016-06-01,2028-05-01,MQ,EXCELS,,BOLC/CCC,Y,N,"Top 10% of captains I senior rate.",',
-  'Ramsey,Danielle,SSG,Enlisted,92Y,M-Day,WPBQAA,0495 CS HHC,Kalispell,Supply Sergeant,11.0,4.1,2.5,0,2015-02-01,2027-09-01,,,Highly Qualified,BLC/ALC,N,N,,',
+  'Whitaker,Marcus,CPT,Officer,42A,AGR,WPBQAA,0495 CS HHC,Kalispell,S1 OIC,2016-06-01,2023-03-15,2028-05-01,,,1.8,,MQ,EXCELS,,BOLC/CCC,Y,N,"Top 10% of captains I senior rate.",',
+  'Ramsey,Danielle,SSG,Enlisted,92Y,M-Day,WPBQAA,0495 CS HHC,Kalispell,Supply Sergeant,2015-02-01,2022-01-10,2027-09-01,11.0,4.1,2.5,0,,,Highly Qualified,BLC/ALC,N,N,,',
 ].join('\n')
 
 export function buildCsvTemplate(): string {

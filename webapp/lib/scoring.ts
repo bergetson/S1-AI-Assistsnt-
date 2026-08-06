@@ -1,6 +1,7 @@
 import type { SoldierProfile, Position, ScoredPosition, MatchLabel, CommuteLimit, CareerCategory, BoardAlert, PositionGap } from './types'
 import { getCommute } from './data/cities'
 import { ARNG_BOARDS, getNextBoardDate } from './data/boards'
+import { AS_OF_YEAR } from './asOf'
 
 export const RANK_NUM: Record<string, number> = {
   E1:1, E2:2, E3:3, E4:4, E5:5, E6:6, E7:7, E8:8, E9:9,
@@ -628,7 +629,7 @@ export function buildCareerPath(profile: SoldierProfile): CareerStep[] {
   // 20-year retirement check
   const yearsToRetirement = Math.max(0, 20 - profile.yearsOfService)
   if (yearsToRetirement > 0 && yearsToRetirement <= 15) {
-    const retYear = new Date().getFullYear() + yearsToRetirement
+    const retYear = AS_OF_YEAR + yearsToRetirement
     steps.push({
       id: 'retirement',
       year: yearsToRetirement,

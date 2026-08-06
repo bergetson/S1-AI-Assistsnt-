@@ -9,6 +9,7 @@ import { categoryNames, subcategoriesOf } from '@/lib/civilian/taxonomy'
 import { MT_CITIES } from '@/lib/data/cities'
 import { ImpactBadge, VerificationBadge, PrototypeNotice, DemoPill, MissingDataNote, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
 import { rankLabel } from '@/lib/commandTypes'
 import { cn } from '@/lib/utils'
 
@@ -24,7 +25,7 @@ const STARTER: CapabilityRequirement[] = [
 ]
 
 export default function MissionBuilderPage() {
-  const { roster, civilianProfiles, rosterIsDemo, civilianIsSynthetic } = useForceData()
+  const { roster, civilianProfiles, sources, civilianIsSynthetic } = useForceData()
   const [name, setName] = useState('Temporary Power and Shelter Support')
   const [location, setLocation] = useState('Great Falls')
   const [durationDays, setDuration] = useState(45)
@@ -80,7 +81,7 @@ export default function MissionBuilderPage() {
         c.distanceMiles == null ? 'unknown' : String(c.distanceMiles),
         c.communityImpact, c.warnings.join('; '),
       ]),
-      `${civilianIsSynthetic ? 'DEMO DATA — civilian capability is synthetic. ' : ''}Decision support only — not an order or tasking.`)
+      exportBanner(sources.all, 'Decision support only — not an order or tasking.'))
   }
 
   return (
@@ -200,7 +201,7 @@ export default function MissionBuilderPage() {
 
           {/* ── COAs and candidates ── */}
           <div className="space-y-5">
-            <DataSourceBanner rosterIsDemo={rosterIsDemo} civilianIsSynthetic={civilianIsSynthetic} />
+            <DataSourceBanner sources={sources.all} />
 
             <section>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Personnel courses of action</h2>

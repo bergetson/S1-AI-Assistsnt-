@@ -629,6 +629,13 @@ export interface ForceSummary {
   retirementEligible: number
   avgTig: number
   avgTip: number
+  /**
+   * How many of the assigned actually carry PEBD/DOR. When this is 0 the
+   * fields above that depend on those clocks — avgTig, boardEligible,
+   * retirementEligible — are 0 for want of data, not because the answer is
+   * zero. Every consumer must say "Unknown" rather than print the number.
+   */
+  serviceDatesKnown: number
 }
 
 export function summarizeForce(
@@ -639,8 +646,10 @@ export function summarizeForce(
   const auth = positionsInFormation(positions, uics).filter(p => p.authorized !== false)
   const people = rosterInFormation(roster, uics)
   const n = people.length || 1
+  const withDates = people.filter(hasServiceDates)
 
   return {
+    serviceDatesKnown: withDates.length,
     assigned: people.length,
     authorized: auth.length,
     fillPct: auth.length === 0 ? 0 : Math.round((people.length / auth.length) * 100),
@@ -653,7 +662,12 @@ export function summarizeForce(
     staleInPosition: people.filter(isStaleInPosition).length,
     flagged: people.filter(s => s.flagged).length,
     retirementEligible: people.filter(s => s.yearsOfService >= RETIREMENT_YEARS).length,
-    avgTig: Math.round((people.reduce((a, s) => a + s.timeInGrade, 0) / n) * 10) / 10,
+    // Averaged over only the records that HAVE a date of rank. Dividing by the
+    // whole formation would drag the mean toward zero in proportion to how much
+    // data is missing, which reads as "this unit is junior" rather than
+    // "we don't know". 0 here always means "no record carried the clock".
+    avgTig: withDates.length === 0 ? 0
+      : Math.round((withDates.reduce((a, s) => a + s.timeInGrade, 0) / withDates.length) * 10) / 10,
     avgTip: Math.round((people.reduce((a, s) => a + s.timeInPosition, 0) / n) * 10) / 10,
   }
 }

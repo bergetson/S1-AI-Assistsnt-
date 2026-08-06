@@ -3,8 +3,6 @@
 import { useState, useMemo } from 'react'
 import { useProfileStore } from '@/lib/store'
 import { MOS_TRANSITIONS, getTransitionTo, MOS_POSITION_COUNTS } from '@/lib/data/mosTransitions'
-import { scoreAllPositions } from '@/lib/scoring'
-import { positions } from '@/lib/data/positions'
 import type { MosTransition } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -116,7 +114,6 @@ export default function ReclassificationPage() {
   const { profile } = useProfileStore()
   const [search, setSearch] = useState('')
 
-  const targetTransition = profile.targetMos ? getTransitionTo(profile.targetMos) : undefined
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()

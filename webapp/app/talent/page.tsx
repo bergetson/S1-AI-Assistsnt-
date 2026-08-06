@@ -9,7 +9,7 @@ import { mosGaps, promotionPipeline } from '@/lib/talent/statewideAnalytics'
 import { analyzeDataQuality } from '@/lib/talent/dataQuality'
 import { isCredentialExpired, isCredentialExpiringSoon } from '@/lib/civilian/types'
 import { rulesNeedingReview } from '@/lib/rules/registry'
-import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
+import { PrototypeNotice, DataSourceBanner } from '@/components/shared/Badges'
 import { ActionFeed } from '@/components/shared/ActionFeed'
 import { buildActions } from '@/lib/actions/build'
 import { actionsForRole } from '@/lib/actions/types'
@@ -34,7 +34,7 @@ function Tile({ label, value, href, tone = 'neutral', hint }: {
 }
 
 export default function TalentDashboardPage() {
-  const { positions, roster, civilianProfiles, isDemo } = useForceData()
+  const { positions, roster, civilianProfiles, sources } = useForceData()
   const { applications, cycles } = useMarketplaceStore()
 
   const allUics = useMemo(
@@ -92,7 +92,7 @@ export default function TalentDashboardPage() {
       <div className="px-8 py-6 bg-white border-b">
         <div className="max-w-[1400px] mx-auto">
           <h1 className="text-2xl font-bold" style={{ color: GREEN }}>
-            Talent Management Dashboard {isDemo && <DemoPill />}
+            Talent Management Dashboard
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-3xl">
             Statewide view for S1/G1 talent managers: where the vacancies are, who is eligible and
@@ -105,6 +105,8 @@ export default function TalentDashboardPage() {
         <div className="max-w-[1400px] mx-auto space-y-6">
 
           {/* Answers first — the counts below are supporting detail. */}
+          <DataSourceBanner sources={sources.all} positionCount={positions.length} />
+
           <ActionFeed items={actions} title="What needs your attention statewide" />
 
           <section>

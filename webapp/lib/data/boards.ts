@@ -1,3 +1,4 @@
+import { asOfDate } from '../asOf'
 // ARNG promotion board schedule (approximate — verify with NGB Portal each year)
 // Dates represent typical convene months based on historical ARNG patterns.
 
@@ -52,7 +53,10 @@ export function getNextBoardDate(grade: string): {
   const board = ARNG_BOARDS.find(b => b.grade === grade)
   if (!board) return null
 
-  const now = new Date()
+  // Counted from the extract date, not from today: a static export renders this
+  // into prerendered HTML, so a live clock would disagree with itself after
+  // hydration, and board windows are only meaningful against the data's own date.
+  const now = asOfDate()
   let convene = new Date(now.getFullYear(), board.typicalMonth - 1, 15)
   if (convene <= now) {
     convene = new Date(now.getFullYear() + 1, board.typicalMonth - 1, 15)

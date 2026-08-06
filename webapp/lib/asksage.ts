@@ -1,8 +1,9 @@
 import type { SoldierProfile, ScoredPosition } from './types'
 import { PROMOTION_GATES, getPromotionReadiness, getBoardAlert } from './scoring'
 import { getTransitionTo, MOS_POSITION_COUNTS } from './data/mosTransitions'
+import { AS_OF_YEAR } from './asOf'
 
-const YEAR = new Date().getFullYear()
+const YEAR = AS_OF_YEAR
 
 // ── Inline promotion readiness summary for the AI context ─────────────────
 function buildPromotionContext(profile: SoldierProfile): string {

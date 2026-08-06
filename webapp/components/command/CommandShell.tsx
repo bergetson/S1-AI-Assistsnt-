@@ -6,6 +6,7 @@ import { positions } from '@/lib/data/positions'
 import { useCommandStore } from '@/lib/commandStore'
 import { realRoster, DEFAULT_FORMATION_UICS, REAL_ROSTER_MISSING_FIELDS } from '@/lib/data/realRoster'
 import { buildUnitFamilies, summarizeForce } from '@/lib/forceAnalytics'
+import { BASELINE_ROSTER_SOURCE, IMPORTED_ROSTER_SOURCE } from '@/lib/dataSources'
 import { cn } from '@/lib/utils'
 
 export const ARMY_GREEN = '#1B4F2A'
@@ -26,8 +27,8 @@ export function getBaseRoster() {
 export { REAL_ROSTER_MISSING_FIELDS }
 
 /**
- * Resolves the roster actually in play. Demo data is substituted in whenever the
- * store is in demo mode, so no page has to branch on it.
+ * Resolves the roster actually in play — the commander's own import when there
+ * is one, the de-identified real force otherwise, so no page has to branch.
  */
 export function useActiveRoster() {
   const { roster, source } = useCommandStore()
@@ -54,9 +55,9 @@ export function useSeedFormation() {
 }
 
 /**
- * Persisted zustand hydrates after first paint, so a real imported roster would
- * briefly render under a red DEMO banner. That is a trust bug rather than a
- * cosmetic one, so the banner and headline counts wait one tick.
+ * Persisted zustand hydrates after first paint, so a commander's own imported
+ * roster would briefly render under the baseline-source banner. That is a trust
+ * bug rather than a cosmetic one, so the banner and headline counts wait a tick.
  *
  * The mount-effect setState below is the canonical hydration guard — the whole
  * point is to render differently before and after hydration, so the lint rule
@@ -70,23 +71,39 @@ export function useHydrated(): boolean {
 }
 
 /**
- * States what the baseline data actually is. It is no longer synthetic — it is
- * the real force with identity removed — so calling it "DEMO" would be as
- * misleading in the other direction.
+ * States what the roster on screen actually is. Deliberately NOT called
+ * DemoBanner: the baseline is the real force with identity removed, and a
+ * component whose name says "demo" while its text says "real" is exactly the
+ * drift that made one screen contradict another. Text comes from the single
+ * DataSource model so it cannot diverge from what the AI is told.
  */
-export function DemoBanner() {
+export function RosterSourceBanner() {
   const { source } = useCommandStore()
   const hydrated = useHydrated()
-  if (!hydrated || source === 'imported') return null
+  if (!hydrated) return null
+
+  if (source === 'imported') {
+    return (
+      <div className="bg-emerald-50 border-y border-emerald-300 text-emerald-900 px-8 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs font-bold tracking-wide">
+          YOUR IMPORTED ROSTER
+        </span>
+        <span>{IMPORTED_ROSTER_SOURCE.statement}</span>
+        <Link href="/command/import" className="underline font-semibold ml-auto whitespace-nowrap">
+          Manage import →
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-blue-50 border-y border-blue-300 text-blue-900 px-8 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="px-2 py-0.5 rounded bg-blue-700 text-white text-xs font-bold tracking-wide">
         REAL FORCE · DE-IDENTIFIED
       </span>
       <span>
-        Actual MTARNG assignments — real grades, MOSs, units, time in position, and ETS dates.
-        Names are withheld; soldiers appear as <span className="font-mono">S-nnnn</span>.
-        Time in service and time in grade are unavailable in the source extract and read as unknown.
+        {BASELINE_ROSTER_SOURCE.statement}{' '}
+        Not in the extract: {BASELINE_ROSTER_SOURCE.missingFields?.join(', ')} — these read as Unknown.
       </span>
       <Link href="/command/import" className="underline font-semibold ml-auto whitespace-nowrap">
         Import a named roster →
@@ -96,7 +113,7 @@ export function DemoBanner() {
 }
 
 /** Print-only watermark noting the identity boundary. */
-export function DemoWatermark() {
+export function RosterSourceWatermark() {
   const { source } = useCommandStore()
   const hydrated = useHydrated()
   if (!hydrated || source === 'imported') return null

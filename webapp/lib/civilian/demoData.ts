@@ -5,6 +5,7 @@ import type {
 } from './types'
 import { demoProvenance } from '../provenance'
 import { countyForCity } from '../communityImpact/types'
+import { AS_OF_YEAR } from '../asOf'
 
 // ── Deterministic civilian demo data ──────────────────────────────────────────
 // Same discipline as the demo roster: a seeded PRNG, no Math.random, no
@@ -12,7 +13,7 @@ import { countyForCity } from '../communityImpact/types'
 // nondeterminism becomes a hydration mismatch.
 
 const SEED = 0x9E3779B1
-const BASE_YEAR = 2026
+const BASE_YEAR = AS_OF_YEAR
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0

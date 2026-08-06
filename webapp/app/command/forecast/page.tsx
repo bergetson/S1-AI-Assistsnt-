@@ -8,12 +8,12 @@ import { RETENTION_SOURCES } from '@/lib/data/retention'
 import type { CareerCategory } from '@/lib/types'
 import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
+  ARMY_GREEN, CommandHeader, RosterSourceBanner, RosterSourceWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
 } from '@/components/command/CommandShell'
 import { cn } from '@/lib/utils'
+import { BASE_YEAR } from '@/components/shared/useForceData'
 
-const BASE_YEAR = 2026
 const CATEGORY_LABEL: Record<CareerCategory, string> = {
   Officer: 'Officer', Warrant: 'Warrant', Enlisted: 'Enlisted',
 }
@@ -56,15 +56,15 @@ export default function CommandForecastPage() {
   if (selectedUics.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DemoBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
+        <RosterSourceBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DemoWatermark />
-      <DemoBanner />
+      <RosterSourceWatermark />
+      <RosterSourceBanner />
       <FormationBar />
       <CommandHeader
         title="Attrition & Promotion Forecast"

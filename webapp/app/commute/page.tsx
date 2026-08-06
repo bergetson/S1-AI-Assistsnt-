@@ -3,7 +3,7 @@
 import { useProfileStore } from '@/lib/store'
 import { positions } from '@/lib/data/positions'
 import { scoreAllPositions } from '@/lib/scoring'
-import { getCommute, commuteCategory, commuteColor } from '@/lib/data/cities'
+import { commuteCategory, commuteColor } from '@/lib/data/cities'
 import { useState, useMemo } from 'react'
 
 const COMMUTE_LIMIT_MINS: Record<string, number> = {

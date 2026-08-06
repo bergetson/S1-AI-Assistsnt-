@@ -12,8 +12,9 @@ import {
   resolvePosition,
 } from '@/lib/careerPlanner'
 import Link from 'next/link'
+import { AS_OF_YEAR } from '@/lib/asOf'
 
-const CURRENT_YEAR = new Date().getFullYear()
+const CURRENT_YEAR = AS_OF_YEAR
 
 function dwellLabel(y: number): string {
   return y === 1.5 ? '18 mo' : `${y} yr`

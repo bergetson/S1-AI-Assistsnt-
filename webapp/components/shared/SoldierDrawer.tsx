@@ -7,6 +7,8 @@ import { RANK_NUM } from '@/lib/scoring'
 import { boardEligibility, isStaleInPosition, earliestDeparture, TIP_STALE_YEARS } from '@/lib/forceAnalytics'
 import { countyForCity } from '@/lib/communityImpact/types'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
+import { useForceData } from './useForceData'
 import { cn } from '@/lib/utils'
 
 // Any aggregate in the app can open this: a bar, a tile, a count. The whole
@@ -63,6 +65,7 @@ export function SoldierDrawer({
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [asc, setAsc] = useState(false)
   const [q, setQ] = useState('')
+  const { sources } = useForceData()
 
   // Escape closes, and the body must not scroll behind the panel.
   useEffect(() => {
@@ -134,7 +137,9 @@ export function SoldierDrawer({
                   s.yearsOfService ? String(s.yearsOfService) : 'unknown',
                   s.timeInGrade ? String(s.timeInGrade) : 'unknown',
                   String(s.timeInPosition), s.ets, s.flagged ? 'No' : 'Yes',
-                ]))}
+                ]),
+                exportBanner(sources.military,
+                  'TIS and TIG read "unknown" where the source extract carried no PEBD or date of rank.'))}
               className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium">
               ⬇ Export
             </button>

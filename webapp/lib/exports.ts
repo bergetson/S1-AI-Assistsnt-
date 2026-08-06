@@ -16,17 +16,27 @@ export function toCsv(headers: string[], rows: string[][], banner?: string): str
   return lines.join('\n')
 }
 
-export function downloadCsv(
-  filename: string, headers: string[], rows: string[][], banner?: string
-): void {
+/** Ship any already-built text as a download. One place owns the DOM dance. */
+export function downloadFile(filename: string, body: string): void {
   if (typeof window === 'undefined') return
-  const blob = new Blob([toCsv(headers, rows, banner)], { type: 'text/csv;charset=utf-8' })
+  const blob = new Blob(['﻿', body], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  // Firefox ignores a click on an anchor that is not in the document, and
+  // revoking the URL in the same tick can cancel the download before it starts.
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+export function downloadCsv(
+  filename: string, headers: string[], rows: string[][], banner?: string
+): void {
+  downloadFile(filename, toCsv(headers, rows, banner))
 }
 
 export function downloadJson(filename: string, data: unknown): void {

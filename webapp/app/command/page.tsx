@@ -9,7 +9,7 @@ import {
   projectPromotions, rosterInFormation, hasServiceDates, isStaleInPosition, TIP_STALE_YEARS,
 } from '@/lib/forceAnalytics'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
+  ARMY_GREEN, CommandHeader, RosterSourceBanner, RosterSourceWatermark, FormationBar,
   CommandPrintStyles, useActiveRoster, useSeedFormation, useHydrated,
 } from '@/components/command/CommandShell'
 import { ActionFeed } from '@/components/shared/ActionFeed'
@@ -19,8 +19,8 @@ import { actionsForRole } from '@/lib/actions/types'
 import { useForceData, AS_OF } from '@/components/shared/useForceData'
 import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { cn } from '@/lib/utils'
+import { BASE_YEAR } from '@/components/shared/useForceData'
 
-const BASE_YEAR = 2026
 
 function Stat({ label, value, tone = 'default', hint, onClick }: {
   label: string; value: string | number
@@ -114,8 +114,8 @@ export default function CommandOverviewPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DemoWatermark />
-      <DemoBanner />
+      <RosterSourceWatermark />
+      <RosterSourceBanner />
       <FormationBar />
       <CommandHeader
         title="Commander View"

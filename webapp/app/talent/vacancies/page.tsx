@@ -5,8 +5,9 @@ import { useForceData, BASE_YEAR } from '@/components/shared/useForceData'
 import { vacantBillets, buildUnitNameMap, resolveUnitName, rankCandidates, earliestDeparture, rosterInFormation } from '@/lib/forceAnalytics'
 import { countyForCity } from '@/lib/communityImpact/types'
 import { rankLabel, soldierLabel } from '@/lib/commandTypes'
-import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
+import { PrototypeNotice, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
 import { cn } from '@/lib/utils'
 
 const GREEN = '#1B4F2A'
@@ -18,7 +19,7 @@ const VACANCY_STATES = ['Draft', 'Validating', 'Published', 'Under Review', 'Sel
 type VacancyState = typeof VACANCY_STATES[number]
 
 export default function VacanciesPage() {
-  const { positions, roster, isDemo } = useForceData()
+  const { positions, roster, sources } = useForceData()
   const [grade, setGrade] = useState('')
   const [bn, setBn] = useState('')
   const [criticalOnly, setCriticalOnly] = useState(false)
@@ -58,7 +59,7 @@ export default function VacanciesPage() {
         <div className="max-w-[1400px] mx-auto flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: GREEN }}>
-              Vacancy Management {isDemo && <DemoPill />}
+              Vacancy Management
             </h1>
             <p className="text-sm text-gray-500 mt-1 max-w-3xl">
               Current and projected vacancies with candidate depth. Vacancy is derived from who is actually
@@ -73,7 +74,7 @@ export default function VacanciesPage() {
               states[v.id] ?? 'Draft',
               String(rankCandidates(roster, v, 25).filter(c => c.blockers.length === 0).length),
             ]),
-            `${isDemo ? 'DEMO DATA. ' : ''}Prototype statuses do not update any official personnel system.`)}
+            exportBanner(sources.military, 'Prototype statuses do not update any official personnel system.'))}
             className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: GREEN }}>
             ⬇ Export vacancies
           </button>
@@ -101,6 +102,8 @@ export default function VacanciesPage() {
 
       <div className="px-8 py-6">
         <div className="max-w-[1400px] mx-auto space-y-5">
+          <DataSourceBanner sources={sources.military} positionCount={positions.length} />
+
           <section className="space-y-2">
             {vacancies.slice(0, 60).map(v => {
               const candidates = rankCandidates(roster, v, 25)

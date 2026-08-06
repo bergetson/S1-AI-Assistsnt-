@@ -155,10 +155,14 @@ registry. Never restate a rule in prompt text; the two copies previously drifted
 
 ### Invariants the tests enforce
 
-Run `npm test` (105 tests). The non-obvious ones:
+Run `npm test` (172 tests). The non-obvious ones:
 
 - Missing data must produce `Unknown`, never a favorable default. Commute with no
-  route is marked `excluded`, not scored as neutral.
+  route is marked `excluded`, not scored as neutral. This binds the **AI payload**
+  too, not just the UI: `tests/provenance.test.ts` asserts the commander prompt
+  says `Board-eligible now: UNKNOWN` rather than `0` when the roster carries no
+  service clocks. It once said `0`, and the "do not invent numbers" rule then
+  locked the model into advising that the bench was empty.
 - Community impact never has a negative-weight factor — nothing *reduces* risk.
   Adding people from one employer can only raise it.
 - Analytics must be invariant to record order. `analyzeDataQuality` sorts inputs
@@ -172,15 +176,55 @@ Run `npm test` (105 tests). The non-obvious ones:
 - **Soldiers** (`realRoster.ts`, 2,293): real assignments, de-identified. Not demo.
 - **Civilian capability** (`civilian/demoData.ts`): synthetic — no real source exists.
 
-Do not label the roster "demo"; it is real data with identity withheld. Use
-`rosterIsDemo` / `civilianIsSynthetic` from `useForceData()` rather than one
-blanket flag, or synthetic civilian data will render as real once someone
-imports a named roster.
+Do not label the roster "demo"; it is real data with identity withheld.
+
+**`lib/dataSources.ts` is the single authority on provenance.** Every screen,
+export, and AI prompt reads a `DataSource[]` from `useForceData().sources`
+(`.all`, `.military`, or one dataset). There is deliberately **no app-wide
+`isDemo` boolean** — the billets are real, the roster is real but de-identified,
+and the civilian layer is generated, so one flag covering all three is always a
+lie about at least one of them. The previous ad-hoc booleans drifted until
+`/g1-state-view` claimed data was "imported" while `/command/succession` told
+the model the real force was "SYNTHETIC DEMONSTRATION DATA".
+
+Only `fidelity: 'synthetic'` warrants a warning colour — see `isDemoFidelity()`.
+Components named for the *thing they say*, not a flag: `RosterSourceBanner`,
+`FidelityPill`, `DataSourceBanner`.
 
 `lib/civilian/demoData.ts` uses a seeded mulberry32 PRNG keyed on soldier id and
 a fixed `BASE_YEAR`. Never introduce `Math.random()` or `Date.now()` — this is a
 static export and nondeterminism becomes a hydration mismatch. Keying on soldier
 id means roster reordering cannot shift anyone's profile.
+
+### The planning epoch (`lib/asOf.ts`)
+
+`AS_OF_ISO` / `AS_OF_YEAR` / `asOfDate()` are the **only** source of "now".
+`BASE_YEAR` and `AS_OF` in `useForceData` are re-exports of them.
+
+Never write `new Date()` in render or at module scope. Two reasons, both of
+which had already bitten:
+
+1. **Correctness.** Everything derives from a dated extract, so measuring TIG,
+   ETS, and board windows against today silently ages the whole force. A soldier
+   does not become board-eligible because a tab was left open until January.
+2. **Hydration.** Module-scope `new Date()` is evaluated once on the build
+   machine and baked into the prerendered HTML, then re-evaluated in the browser.
+   Across a New Year boundary they disagree and React reports a mismatch.
+
+When a new extract lands, change those two constants and nothing else.
+
+### Feeding a real roster
+
+`lib/rosterImport.ts` accepts **either** precomputed decimals (`tis`, `tig`) or
+the dates a personnel system actually exports (`pebd`, `dor`), and derives the
+clocks from the dates via `yearsSince()` against the epoch. Decimals win when
+both are present; an unreadable date produces a row warning and stays `Unknown`
+rather than becoming 0. Add new header spellings to `HEADER_ALIASES`.
+
+The committed `realRoster.ts` has **neither** PEBD nor DOR, which is why
+`summarizeForce().serviceDatesKnown` is 0 on the default formation and every
+promotion/retirement number reads `Unknown`. Supplying those two columns is what
+turns the forecasting on — nothing else is missing.
 
 ### New store keys
 

@@ -8,9 +8,15 @@ import { buildCivilianProfiles } from '@/lib/civilian/demoData'
 import { useCivilianStore } from '@/lib/civilianStore'
 import type { CivilianCapabilityProfile } from '@/lib/civilian/types'
 import type { RosterSoldier } from '@/lib/commandTypes'
+import {
+  BILLET_SOURCE, CIVILIAN_SOURCE, rosterSource, isDemoFidelity, type DataSource,
+} from '@/lib/dataSources'
+import { AS_OF_ISO, AS_OF_YEAR } from '@/lib/asOf'
 
-export const AS_OF = '2026-06-01'
-export const BASE_YEAR = 2026
+// Re-exported from lib/asOf so the many existing importers keep working while
+// there stays exactly one definition of the planning epoch.
+export const AS_OF = AS_OF_ISO
+export const BASE_YEAR = AS_OF_YEAR
 
 /**
  * The one place that resolves "which roster and which civilian profiles are in
@@ -34,8 +40,22 @@ export function useForceData() {
   )
   const civilianProfiles = useMemo(() => civilianFor(activeRoster), [activeRoster])
 
-  // The baseline roster is real force data, de-identified — not synthetic.
-  const rosterIsDemo = false
+  // Each dataset describes its own fidelity. There is deliberately no single
+  // app-wide "isDemo" boolean: the billets are real, the roster is real but
+  // de-identified, and the civilian layer is generated. One flag covering all
+  // three is always a lie about at least one of them.
+  const sources = useMemo(() => {
+    const rs = rosterSource(source === 'imported')
+    return {
+      billets: BILLET_SOURCE,
+      roster: rs,
+      civilian: CIVILIAN_SOURCE,
+      /** Everything on screen, for a banner or an export header. */
+      all: [BILLET_SOURCE, rs, CIVILIAN_SOURCE] as DataSource[],
+      /** Just the military picture, for screens with no civilian content. */
+      military: [BILLET_SOURCE, rs] as DataSource[],
+    }
+  }, [source])
 
   return {
     positions,
@@ -43,20 +63,11 @@ export function useForceData() {
     civilianProfiles,
     source,
     selectedUics,
+    sources,
 
-    /**
-     * The BILLETS are always real current MTARNG force structure. Only the
-     * people and their civilian profiles can be synthetic, so the two are
-     * flagged separately — importing a real roster must not make synthetic
-     * civilian data start rendering as though it were real.
-     */
-    positionsAreReal: true as const,
-    rosterIsDemo,
-    /** No real civilian capability data exists yet; it is generated in all modes. */
-    civilianIsSynthetic: true as const,
-
-    /** Legacy alias — refers to the roster. Prefer the specific flags above. */
-    isDemo: rosterIsDemo,
+    /** True only for genuinely generated data. The roster is real. */
+    civilianIsSynthetic: isDemoFidelity(CIVILIAN_SOURCE.fidelity),
+    rosterIsImported: source === 'imported',
   }
 }
 

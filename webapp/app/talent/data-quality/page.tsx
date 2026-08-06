@@ -6,13 +6,14 @@ import { useMarketplaceStore } from '@/lib/marketplaceStore'
 import { analyzeDataQuality, type IssueSeverity } from '@/lib/talent/dataQuality'
 import { PrototypeNotice } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
 import { cn } from '@/lib/utils'
 
 const GREEN = '#1B4F2A'
 const sel = 'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700'
 
 export default function DataQualityPage() {
-  const { positions, roster, civilianProfiles } = useForceData()
+  const { positions, roster, civilianProfiles, sources } = useForceData()
   const { applications } = useMarketplaceStore()
   const [severity, setSeverity] = useState<IssueSeverity | ''>('')
   const [category, setCategory] = useState('')
@@ -38,7 +39,8 @@ export default function DataQualityPage() {
           </div>
           <button onClick={() => downloadCsv('data-quality-report.csv',
             ['Severity', 'Category', 'Entity', 'Entity ID', 'Label', 'Detail', 'Recommended action'],
-            filtered.map(i => [i.severity, i.category, i.entity, i.entityId, i.label, i.detail, i.recommendedAction]))}
+            filtered.map(i => [i.severity, i.category, i.entity, i.entityId, i.label, i.detail, i.recommendedAction]),
+            exportBanner(sources.all, `Findings as of ${AS_OF}.`))}
             className="px-4 py-2 rounded-lg text-white text-sm font-medium"
             style={{ backgroundColor: GREEN }}>
             ⬇ Export report

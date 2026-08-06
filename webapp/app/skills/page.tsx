@@ -8,6 +8,7 @@ import { PROFICIENCY_ORDER, type SkillProficiency, type VerificationStatus } fro
 import { countyForCity } from '@/lib/communityImpact/types'
 import { VerificationBadge, DemoPill, PrototypeNotice, MissingDataNote, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
 import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import { cn } from '@/lib/utils'
 
@@ -16,7 +17,7 @@ const sel = 'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:
 const lbl = 'block text-xs font-semibold text-gray-500 uppercase mb-1'
 
 export default function SkillsExplorerPage() {
-  const { positions, roster, civilianProfiles, rosterIsDemo, civilianIsSynthetic } = useForceData()
+  const { positions, roster, civilianProfiles, sources, civilianIsSynthetic } = useForceData()
   const [f, setF] = useState<CivilianFilter>({})
   const [showFilters, setShowFilters] = useState(true)
 
@@ -57,9 +58,9 @@ export default function SkillsExplorerPage() {
         r.bestVerification,
         r.profile.willingness.useCivilianSkillsOnMission,
         String(r.profile.willingness.maxTravelMiles ?? ''),
-        civilianIsSynthetic ? 'SYNTHETIC DEMO DATA' : r.profile.provenance.source,
+        civilianIsSynthetic ? 'DEMO (synthetic civilian data)' : r.profile.provenance.source,
       ]),
-      civilianIsSynthetic ? 'DEMO DATA — civilian capability is synthetic. Billets are real MTARNG force structure.' : undefined)
+      exportBanner(sources.all))
   }
 
   return (
@@ -211,8 +212,7 @@ export default function SkillsExplorerPage() {
 
       <div className="px-8 py-6">
         <div className="max-w-[1400px] mx-auto space-y-5">
-          <DataSourceBanner rosterIsDemo={rosterIsDemo} civilianIsSynthetic={civilianIsSynthetic}
-            positionCount={positions.length} />
+          <DataSourceBanner sources={sources.all} positionCount={positions.length} />
 
           {/* Aggregates */}
           <section className="grid md:grid-cols-4 gap-3">

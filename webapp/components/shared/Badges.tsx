@@ -8,6 +8,7 @@ import type { VerificationStatus } from '@/lib/civilian/types'
 import type { ImpactLevel } from '@/lib/communityImpact/types'
 import type { DataProvenance } from '@/lib/provenance'
 import { provenanceLabel } from '@/lib/provenance'
+import { FIDELITY_LABEL, isDemoFidelity, CIVILIAN_SOURCE, type DataSource } from '@/lib/dataSources'
 
 // Reusable badges so a dimension looks the same everywhere it appears, and so
 // "Unknown" is always visually distinct from a low-but-known value.
@@ -100,8 +101,8 @@ export function ProvenanceBadge({ value }: { value: DataProvenance | undefined }
 export function DemoPill() {
   return (
     <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold align-middle"
-      title="Civilian occupation, skills, and credentials are synthetic. Military assignment data is real.">
-      CIV: SYNTHETIC
+      title={CIVILIAN_SOURCE.statement}>
+      CIV: DEMO
     </span>
   )
 }
@@ -165,29 +166,60 @@ export function FactorList({ factors }: {
 }
 
 /**
- * States exactly which parts of what you are looking at are real. The billets
- * are current MTARNG force structure; only people and civilian capability can
- * be synthetic, and conflating the two is what makes a demo misleading.
+ * Says exactly which parts of the screen are real and which are generated.
+ * Driven by the DataSource model so no screen can contradict another.
  */
-export function DataSourceBanner({
-  rosterIsDemo, civilianIsSynthetic, positionCount,
-}: {
-  rosterIsDemo: boolean
-  civilianIsSynthetic: boolean
+export function DataSourceBanner({ sources, positionCount }: {
+  sources: DataSource[]
   positionCount?: number
 }) {
-  if (!rosterIsDemo && !civilianIsSynthetic) return null
+  const real = sources.filter(s => !isDemoFidelity(s.fidelity))
+  const demo = sources.filter(s => isDemoFidelity(s.fidelity))
+  if (sources.length === 0) return null
+
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-      <span className="font-bold">What is real here: </span>
-      the {positionCount ? `${positionCount.toLocaleString()} ` : ''}billets and the soldiers filling them are
-      actual MTARNG data — real grades, MOSs, units, locations, component status, time in position,
-      and ETS dates. Names are withheld.
-      <span className="font-bold"> What is synthetic: </span>
-      {civilianIsSynthetic && 'all civilian occupations, skills, credentials, and willingness'}
-      {' '}— generated deterministically for demonstration, because no civilian capability has been
-      collected yet. Time in service and time in grade are absent from the source extract and read as unknown.
+    <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-800 space-y-1.5">
+      {real.map(s => (
+        <div key={s.key} className="flex gap-2">
+          <span className="px-1.5 py-0.5 rounded bg-green-700 text-white font-bold whitespace-nowrap h-fit">
+            {FIDELITY_LABEL[s.fidelity]}
+          </span>
+          <span>
+            <strong>{s.label}: </strong>
+            {s.key === 'billets' && positionCount
+              ? s.statement.replace('Billets,', `${positionCount.toLocaleString()} billets,`)
+              : s.statement}
+            {s.missingFields?.length ? (
+              <span className="text-gray-600">
+                {' '}Not in the source: {s.missingFields.join(', ')} — these read as Unknown.
+              </span>
+            ) : null}
+          </span>
+        </div>
+      ))}
+      {demo.map(s => (
+        <div key={s.key} className="flex gap-2">
+          <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-bold whitespace-nowrap h-fit">
+            {FIDELITY_LABEL[s.fidelity]}
+          </span>
+          <span><strong>{s.label}: </strong>{s.statement}</span>
+        </div>
+      ))}
     </div>
+  )
+}
+
+/** Compact inline marker for a single dataset, for use next to a heading. */
+export function FidelityPill({ source }: { source: DataSource }) {
+  const demo = isDemoFidelity(source.fidelity)
+  return (
+    <span
+      className={cn('text-[10px] px-1.5 py-0.5 rounded font-bold align-middle whitespace-nowrap',
+        demo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800')}
+      title={source.statement}
+    >
+      {demo ? 'DEMO' : FIDELITY_LABEL[source.fidelity].toUpperCase()}
+    </span>
   )
 }
 

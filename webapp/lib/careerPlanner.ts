@@ -1,5 +1,6 @@
 import type { SoldierProfile, Position, ScoredPosition, CareerCategory } from './types'
 import { RANK_NUM, PROMOTION_GATES, scorePosition } from './scoring'
+import { AS_OF_YEAR } from './asOf'
 
 // ── Reverse rank lookup (number → grade string) ──────────────────────────────
 const RANK_REVERSE: Record<number, string> = {}
@@ -366,7 +367,7 @@ export function summarizePlan(
   phases: PlannerPhase[],
   stored: Record<string, Pick[]>
 ): PlanSummary {
-  const currentYear = new Date().getFullYear()
+  const currentYear = AS_OF_YEAR
   const timeline = computeTimeline(profile, phases, stored)
   const last = phases[phases.length - 1]
   const pmeRemaining = new Set<string>()
@@ -398,7 +399,7 @@ export function summarizePlanForAI(
   stored: Record<string, Pick[]>
 ): string {
   if (phases.length === 0) return ''
-  const currentYear = new Date().getFullYear()
+  const currentYear = AS_OF_YEAR
   const timeline = computeTimeline(profile, phases, stored)
   const lines: string[] = []
   lines.push(`Now: ${profile.rank} (${profile.yearsOfService} yrs service, ${profile.timeInGrade} yrs TIG)`)

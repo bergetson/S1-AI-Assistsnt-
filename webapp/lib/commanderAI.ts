@@ -3,6 +3,7 @@ import type { Position } from './types'
 import type { ForceSummary } from './forceAnalytics'
 import { RETENTION_SOURCES } from './data/retention'
 import { rulesContext, AI_GOVERNANCE } from './rules/aiContext'
+import { isDemoFidelity, type DataSource } from './dataSources'
 
 // ── The anonymization boundary ────────────────────────────────────────────────
 // Everything above this line may hold real names. Nothing below it ever does.
@@ -42,8 +43,14 @@ export function anonymizeSoldier(s: RosterSoldier, includeBullets: boolean): str
     s.flagged ? 'FLAGGED' : '',
   ].filter(Boolean).join(', ')
 
+  // A 0 in these columns means the source extract carried no PEBD/DOR. Sending
+  // the literal 0 tells the model a CW5 has zero years of service, and the
+  // "do not invent numbers" rule below then locks it into that reading.
+  const tis = s.yearsOfService > 0 ? `${s.yearsOfService}yr TIS` : 'TIS unknown'
+  const tig = s.timeInGrade > 0 ? `${s.timeInGrade}yr TIG` : 'TIG unknown'
+
   return `${s.anonId}: ${s.rank} ${s.mos} (${s.careerCategory}, ${s.componentStatus}) | ` +
-    `${s.yearsOfService}yr TIS, ${s.timeInGrade}yr TIG, ${s.timeInPosition}yr TIP | ` +
+    `${tis}, ${tig}, ${s.timeInPosition}yr TIP | ` +
     `${s.dutyTitle} @ ${s.city} | ${evalStr} | PME: ${pme}` +
     `${flags ? ` | ${flags}` : ''}${bullets}`
 }
@@ -69,7 +76,42 @@ export interface CommanderContext {
   promotions: PromotionNeed[]
   baseYear: number
   horizonYears: number
-  isDemo: boolean
+  /**
+   * What the model is actually looking at. Passing a single isDemo boolean told
+   * the model the whole roster was fabricated when only the civilian layer is.
+   */
+  sources: DataSource[]
+}
+
+/** Tell the model precisely which parts of its input are real. */
+function describeSources(sources: DataSource[]): string {
+  if (!sources?.length) return ''
+  const lines = sources.map(s =>
+    `  - ${s.label}: ${isDemoFidelity(s.fidelity) ? 'GENERATED FOR DEMONSTRATION' : 'REAL'} — ${s.statement}` +
+    (s.missingFields?.length ? ` Absent from the source: ${s.missingFields.join(', ')} (treat as Unknown).` : ''))
+  return `DATA FIDELITY — be precise about this if the commander appears to be making a real decision:\n${lines.join('\n')}\n\n`
+}
+
+/**
+ * Everything that depends on PEBD and date of rank, stated as known or unknown.
+ * These three numbers are all 0 when the extract carried no service clocks, and
+ * a bare "Board-eligible now: 0" reads to the model as an empty bench — the
+ * opposite of the truth, and unrecoverable once the no-fabrication rule bites.
+ */
+function describeServiceClocks(s: ForceSummary): string {
+  if (s.serviceDatesKnown === 0) {
+    return 'Average TIG: UNKNOWN | Board-eligible now: UNKNOWN | Retirement eligible (20+ yr): UNKNOWN\n' +
+      '  ^ The source extract contains no PEBD and no date of rank, so time in service and time in ' +
+      'grade are absent for every soldier in this formation. Do NOT report these as zero and do NOT ' +
+      'conclude that nobody is eligible. Say the data is missing and that promotion and retirement ' +
+      'projections cannot be made until DOR and PEBD are loaded.'
+  }
+  const partial = s.serviceDatesKnown < s.assigned
+    ? `  ^ Based on the ${s.serviceDatesKnown} of ${s.assigned} soldiers who have a date of rank and PEBD on ` +
+      `file; the other ${s.assigned - s.serviceDatesKnown} are unknown and are excluded, so these are lower bounds.`
+    : ''
+  return `Average TIG ${s.avgTig} yr | Board-eligible now: ${s.boardEligible} | ` +
+    `Retirement eligible (20+ yr): ${s.retirementEligible}${partial ? `\n${partial}` : ''}`
 }
 
 export function buildCommanderPrompt(ctx: CommanderContext): string {
@@ -106,12 +148,11 @@ Answer questions about manning, talent management, succession, promotion plannin
 Soldiers are identified ONLY by pseudonymous IDs like S-014. You do not know their names and must never guess, invent, or ask for them. Always refer to individuals by their ID exactly as given (e.g. "S-014"); the commander's browser maps IDs back to names locally.
 
 == FORMATION: ${ctx.formationName} ==
-${ctx.isDemo ? 'NOTE: This is SYNTHETIC DEMONSTRATION DATA, not a real roster. Say so if the commander appears to be making an actual decision from it.\n' : ''}Assigned ${summary.assigned} of ${summary.authorized} authorized (${summary.fillPct}% fill)
+${describeSources(ctx.sources)}Assigned ${summary.assigned} of ${summary.authorized} authorized (${summary.fillPct}% fill)
 Officers ${summary.officers} | Warrants ${summary.warrants} | Enlisted ${summary.enlisted}
 AGR ${summary.agr} | M-Day ${summary.mday}
-Average TIG ${summary.avgTig} yr | Average TIP ${summary.avgTip} yr
-Board-eligible now: ${summary.boardEligible} | Over ${3}yr in seat: ${summary.staleInPosition} | Flagged: ${summary.flagged}
-Already retirement eligible (20+ yr): ${summary.retirementEligible}
+Average TIP ${summary.avgTip} yr | Over 3yr in seat: ${summary.staleInPosition} | Not MOS-qualified: ${summary.flagged}
+${describeServiceClocks(summary)}
 
 == MANNING BY GRADE ==
 ${gradeLines || '  (no billets in the selected formation)'}

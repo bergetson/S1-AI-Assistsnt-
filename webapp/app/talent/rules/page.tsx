@@ -43,7 +43,9 @@ export default function PolicyRulesPage() {
           <button onClick={() => downloadCsv('policy-rules.csv',
             ['ID', 'Topic', 'Status', 'Description', 'Authority', 'Citation', 'Applicability', 'Notes'],
             filtered.map(r => [r.id, r.topic, r.status, r.description, r.sourceAuthority,
-              r.citation ?? '', r.applicability, r.notes ?? '']))}
+              r.citation ?? '', r.applicability, r.notes ?? '']),
+            'Policy rules used by this prototype. Rules marked Draft are unverified and need S1 confirmation ' +
+            'before anyone relies on them. Not a substitute for the governing regulation.')}
             className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: GREEN }}>
             ⬇ Export rules
           </button>

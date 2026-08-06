@@ -12,7 +12,7 @@ import { getCommute } from '@/lib/data/cities'
 import { rankLabel } from '@/lib/commandTypes'
 import {
   EligibilityBadge, ReadinessBadge, NeedBadge, StrengthBadge, GapList,
-  PrototypeNotice, DemoPill,
+  PrototypeNotice,
 } from '@/components/shared/Badges'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ const GREEN = '#1B4F2A'
 const SOLDIER_ID = 'self'
 
 export default function SoldierMarketplacePage() {
-  const { positions, roster, isDemo } = useForceData()
+  const { positions, roster } = useForceData()
   const { profile, profileComplete } = useProfileStore()
   const { cycles, applications, addCycle, express, move, patchApplication, lastError, clearError } = useMarketplaceStore()
   const [expanded, setExpanded] = useState<number | null>(null)
@@ -67,7 +67,7 @@ export default function SoldierMarketplacePage() {
       <div className="px-8 py-6 bg-white border-b">
         <div className="max-w-[1200px] mx-auto">
           <h1 className="text-2xl font-bold" style={{ color: GREEN }}>
-            Talent Marketplace {isDemo && <DemoPill />}
+            Talent Marketplace
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-3xl">
             Published opportunities you can express interest in. Every listing shows eligibility, readiness,

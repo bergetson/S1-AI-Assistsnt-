@@ -5,7 +5,7 @@ import type { CivilianCapabilityProfile } from '../civilian/types'
 import { isCredentialExpired, isCredentialExpiringSoon } from '../civilian/types'
 import type { MarketplaceApplication } from '../marketplace/types'
 import {
-  rosterInFormation, positionsInFormation, vacantBillets, earliestDeparture,
+  rosterInFormation, vacantBillets, earliestDeparture,
   isStaleInPosition, hasServiceDates, buildUnitNameMap, resolveUnitName,
   TIP_STALE_YEARS, computeManning,
 } from '../forceAnalytics'

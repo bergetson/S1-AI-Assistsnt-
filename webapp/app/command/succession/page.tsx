@@ -17,12 +17,13 @@ import { queryAskSage, buildFullMessage, getStoredCredentials } from '@/lib/asks
 import type { Position } from '@/lib/types'
 import { rankLabel, soldierLabel } from '@/lib/commandTypes'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
+  ARMY_GREEN, CommandHeader, RosterSourceBanner, RosterSourceWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
 } from '@/components/command/CommandShell'
+import { useForceData } from '@/components/shared/useForceData'
 import { cn } from '@/lib/utils'
+import { BASE_YEAR } from '@/components/shared/useForceData'
 
-const BASE_YEAR = 2026
 
 const selectClass =
   'border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700'
@@ -36,7 +37,8 @@ function readinessColor(r: string): string {
 
 export default function CommandSuccessionPage() {
   useSeedFormation()
-  const { selectedUics, horizonYears, source, shareEvalBullets, setShareEvalBullets } = useCommandStore()
+  const { selectedUics, horizonYears, shareEvalBullets, setShareEvalBullets } = useCommandStore()
+  const { sources } = useForceData()
   const roster = useActiveRoster()
 
   const [billetId, setBilletId] = useState<number | null>(null)
@@ -109,10 +111,12 @@ export default function CommandSuccessionPage() {
       promotions: projectPromotions(positions, roster, selectedUics, BASE_YEAR, horizonYears),
       baseYear: BASE_YEAR,
       horizonYears,
-      isDemo: source === 'demo',
+      // Succession reasons only over military facts, so the civilian layer's
+      // fidelity is not part of what the model is looking at.
+      sources: sources.military,
     })
     return system + buildCandidateBlock(target, candidates)
-  }, [target, candidates, people, roster, selectedUics, horizonYears, source])
+  }, [target, candidates, people, roster, selectedUics, horizonYears, sources])
 
   async function runAnalysis() {
     if (!target || loading) return
@@ -146,15 +150,15 @@ export default function CommandSuccessionPage() {
   if (selectedUics.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DemoBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
+        <RosterSourceBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DemoWatermark />
-      <DemoBanner />
+      <RosterSourceWatermark />
+      <RosterSourceBanner />
       <FormationBar />
       <CommandHeader
         title="Succession Planning"

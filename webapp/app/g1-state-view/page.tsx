@@ -8,11 +8,11 @@ import {
   promotionPipeline, geoHeatTable, type StateFilter,
 } from '@/lib/talent/statewideAnalytics'
 import { singlePointsOfFailure } from '@/lib/talent/succession'
-import { buildUnitFamilies } from '@/lib/forceAnalytics'
 import { countByCategory, filterCivilian } from '@/lib/civilian/filters'
 import { countyForCity } from '@/lib/communityImpact/types'
-import { PrototypeNotice, DemoPill } from '@/components/shared/Badges'
+import { PrototypeNotice, DataSourceBanner } from '@/components/shared/Badges'
 import { downloadCsv } from '@/lib/exports'
+import { exportBanner } from '@/lib/dataSources'
 import { rankLabel } from '@/lib/commandTypes'
 import { AS_OF } from '@/components/shared/useForceData'
 import { ActionFeed } from '@/components/shared/ActionFeed'
@@ -61,14 +61,13 @@ function Bar({ value, max, label, count, onClick }: {
 }
 
 export default function G1StateViewPage() {
-  const { positions, roster, civilianProfiles, isDemo } = useForceData()
+  const { positions, roster, civilianProfiles, sources } = useForceData()
   const [tab, setTab] = useState<Tab>('overview')
   const [f, setF] = useState<StateFilter>({})
   const drawer = useSoldierDrawer()
 
   const filtered = useMemo(() => applyStateFilter(roster, positions, f), [roster, positions, f])
   const overview = useMemo(() => stateOverview(positions, roster, f), [positions, roster, f])
-  const families = useMemo(() => buildUnitFamilies(positions, roster), [positions, roster])
   const bns = useMemo(() => [...new Set(positions.map(p => p.bn).filter(Boolean) as string[])].sort(), [positions])
 
   const fts = useMemo(() => fullTimeSupportByUnit(positions, filtered), [positions, filtered])
@@ -108,7 +107,7 @@ export default function G1StateViewPage() {
         ...overview.byBattalion.map(r => ['Battalion', r.key, String(r.count), `${r.pct}%`]),
         ...overview.byCounty.map(r => ['County', r.key, String(r.count), `${r.pct}%`]),
       ],
-      `${isDemo ? 'DEMO DATA — synthetic. ' : ''}Statewide planning summary. Not assignment authority.`)
+      exportBanner(sources.all, 'Statewide planning summary.'))
   }
 
   const maxCat = Math.max(1, ...overview.byCategory.map(r => r.count))
@@ -121,7 +120,7 @@ export default function G1StateViewPage() {
         <div className="max-w-[1500px] mx-auto flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: GREEN }}>
-              G1 State View {isDemo && <DemoPill />}
+              G1 State View
             </h1>
             <p className="text-sm text-gray-500 mt-1 max-w-3xl">
               Statewide personnel and talent analytics above the formation level. Drill from state to
@@ -210,11 +209,13 @@ export default function G1StateViewPage() {
           <p className="text-xs text-gray-500">
             Scope: <strong>{f.bn ?? 'Statewide'}</strong> · {filtered.length} soldiers ·{' '}
             {overview.totalAuthorized} authorized · {overview.fillPct}% fill ·{' '}
-            Data is {isDemo ? 'synthetic demonstration data' : 'imported'} and aggregated
+            Aggregated from real force data
           </p>
 
           {tab === 'overview' && (
             <>
+              <DataSourceBanner sources={sources.all} positionCount={positions.length} />
+
               <ActionFeed items={actions} title="Statewide priorities" limit={4}
                 onShowSoldiers={item => {
                   const ids = new Set(item.soldierIds ?? [])

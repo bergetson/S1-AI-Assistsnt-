@@ -10,7 +10,7 @@ import {
 import { PROMOTION_GATES, RANK_NUM } from '@/lib/scoring'
 import { rankLabel, type RosterSoldier, soldierLabel } from '@/lib/commandTypes'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, DemoWatermark, FormationBar,
+  ARMY_GREEN, CommandHeader, RosterSourceBanner, RosterSourceWatermark, FormationBar,
   CommandPrintStyles, NoFormation, useActiveRoster, useSeedFormation,
 } from '@/components/command/CommandShell'
 import { cn } from '@/lib/utils'
@@ -133,15 +133,15 @@ export default function CommandRosterPage() {
   if (selectedUics.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <DemoBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
+        <RosterSourceBanner /><FormationBar /><NoFormation /><CommandPrintStyles />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DemoWatermark />
-      <DemoBanner />
+      <RosterSourceWatermark />
+      <RosterSourceBanner />
       <FormationBar />
       <CommandHeader
         title="Force Roster"

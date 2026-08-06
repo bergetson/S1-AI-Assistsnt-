@@ -6,8 +6,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useCommandStore } from '@/lib/commandStore'
 import { importRosterCsv, buildCsvTemplate, CSV_TEMPLATE_HEADERS, type ImportResult } from '@/lib/rosterImport'
+import { downloadFile } from '@/lib/exports'
 import {
-  ARMY_GREEN, CommandHeader, DemoBanner, CommandPrintStyles, getBaseRoster,
+  ARMY_GREEN, CommandHeader, RosterSourceBanner, CommandPrintStyles, getBaseRoster,
 } from '@/components/command/CommandShell'
 import { cn } from '@/lib/utils'
 
@@ -45,18 +46,14 @@ export default function CommandImportPage() {
   }
 
   function downloadTemplate() {
-    const blob = new Blob([buildCsvTemplate()], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'mtarng-roster-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    // Shares the one download helper, which appends the anchor and defers the
+    // revoke — a hand-rolled copy here silently failed to download in Firefox.
+    downloadFile('mtarng-roster-template.csv', buildCsvTemplate())
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DemoBanner />
+      <RosterSourceBanner />
       <CommandHeader
         title="Import Roster"
         subtitle="Load your real force. Data is parsed and stored only in this browser's local storage — it is never uploaded to a server, and it is not visible to anyone else who opens this site."
@@ -65,14 +62,22 @@ export default function CommandImportPage() {
       <div className="px-8 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
 
-          {/* Current state */}
+          {/* Current state. The baseline is the real force, so it is an
+              ordinary informational state — styling it red read as an error
+              and pushed commanders to "fix" something that was already right. */}
           <div className={cn('rounded-xl border p-4',
-            source === 'demo' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50')}>
+            source === 'imported' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50')}>
             <div className="font-semibold text-sm">
-              {source === 'demo'
-                ? `Currently showing the REAL MTARNG force, de-identified — ${getBaseRoster().length} soldiers. Names are withheld.`
-                : `Currently showing YOUR IMPORTED ROSTER — ${roster.length} soldiers.`}
+              {source === 'imported'
+                ? `Currently showing YOUR IMPORTED ROSTER — ${roster.length} soldiers.`
+                : `Currently showing the REAL MTARNG force, de-identified — ${getBaseRoster().length} soldiers. Names are withheld.`}
             </div>
+            {source !== 'imported' && (
+              <p className="mt-1 text-xs text-blue-900">
+                This is real data and nothing is wrong with it. Import your own roster only if you
+                need names, or need the date of rank and PEBD that this extract does not carry.
+              </p>
+            )}
             {source === 'imported' && (
               <button onClick={() => { resetCommand(); setCommitted('ok:Reverted to the de-identified baseline roster.') }}
                 className="mt-2 text-xs underline text-gray-600 hover:text-red-700">
