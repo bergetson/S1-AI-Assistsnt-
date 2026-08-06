@@ -234,6 +234,16 @@ export function hasServiceDates(s: RosterSoldier): boolean {
   return s.yearsOfService > 0 || s.timeInGrade > 0
 }
 
+/** Date of rank is on file, so time in grade can be evaluated. */
+export function hasTimeInGrade(s: RosterSoldier): boolean {
+  return s.timeInGrade > 0
+}
+
+/** PEBD is on file, so time in service can be evaluated. */
+export function hasTimeInService(s: RosterSoldier): boolean {
+  return s.yearsOfService > 0
+}
+
 export type BoardEligibility = 'Eligible' | 'Not Eligible' | 'Unknown'
 
 /**
@@ -246,9 +256,18 @@ export function boardEligibility(s: RosterSoldier): BoardEligibility {
   if (!nextGrade) return 'Not Eligible'      // at the category ceiling
   const gate = PROMOTION_GATES[nextGrade]
   if (!gate) return 'Unknown'
-  if (!hasServiceDates(s)) return 'Unknown'
-  return s.timeInGrade >= gate.minTig && s.yearsOfService >= gate.minTis
-    ? 'Eligible' : 'Not Eligible'
+
+  // Each clock is judged only against its own gate, and only when it is known.
+  //
+  // The trap this avoids: once date of rank arrived but PEBD had not, a soldier
+  // who cleared the TIG gate was failed on the TIS gate and reported "Not
+  // Eligible" — a confident answer derived from a value nobody recorded. That
+  // reads far worse than Unknown, because a commander acts on it.
+  if (!hasTimeInGrade(s)) return 'Unknown'
+  if (s.timeInGrade < gate.minTig) return 'Not Eligible'   // TIG alone disqualifies
+
+  if (!hasTimeInService(s)) return 'Unknown'               // TIG clears; TIS unknowable
+  return s.yearsOfService >= gate.minTis ? 'Eligible' : 'Not Eligible'
 }
 
 export function isBoardEligible(s: RosterSoldier): boolean {

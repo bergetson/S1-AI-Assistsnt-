@@ -103,6 +103,12 @@ export interface RosterSoldier {
   isPromotable: boolean
   flagged: boolean              // adverse action / non-deployable flag
   notes: string
+  /**
+   * Highest civilian education on record ('BACCALAUREATE DEGREE'). Comes from
+   * the CIVED column of the leader extract. Optional because the older
+   * assignment extract does not carry it and an imported roster may not either.
+   */
+  civilianEducation?: string
 }
 
 // ── Formation (a selectable unit) ─────────────────────────────────────────────

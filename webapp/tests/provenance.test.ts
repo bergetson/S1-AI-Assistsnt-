@@ -5,7 +5,7 @@ import {
   rosterSource, isDemoFidelity, exportBanner, FIDELITY_LABEL,
 } from '@/lib/dataSources'
 import { AS_OF_ISO, AS_OF_YEAR, asOfDate } from '@/lib/asOf'
-import { summarizeForce, computeManning } from '@/lib/forceAnalytics'
+import { summarizeForce, computeManning, boardEligibility } from '@/lib/forceAnalytics'
 import { buildCommanderPrompt, anonymizeSoldier, buildNameMap, rehydrateNames } from '@/lib/commanderAI'
 import { importRosterCsv, yearsSince } from '@/lib/rosterImport'
 
@@ -301,5 +301,30 @@ describe('roster import derives the service clocks from dates', () => {
   it('measures against the extract date, not wall-clock time', () => {
     // Same guarantee as the epoch tests: this result must not change tomorrow.
     expect(yearsSince('2020-06-01')).toBe(6)
+  })
+})
+
+describe('eligibility never turns an unknown clock into a verdict', () => {
+  // Regression: when date of rank arrived but PEBD had not, a soldier who
+  // cleared the TIG gate was failed on the TIS gate and reported "Not
+  // Eligible" — a confident answer derived from a value nobody recorded.
+  const s = (o: Parameters<typeof soldier>[0]) => soldier({ rank: 'E6', ...o })
+
+  it('says Unknown when time in grade clears but time in service is absent', () => {
+    expect(boardEligibility(s({ timeInGrade: 9, yearsOfService: 0 }))).toBe('Unknown')
+  })
+
+  it('still says Not Eligible when time in grade alone disqualifies', () => {
+    // No PEBD needed: falling short of the TIG gate settles it on its own.
+    expect(boardEligibility(s({ timeInGrade: 0.2, yearsOfService: 0 }))).toBe('Not Eligible')
+  })
+
+  it('says Unknown when neither clock is on file', () => {
+    expect(boardEligibility(s({ timeInGrade: 0, yearsOfService: 0 }))).toBe('Unknown')
+  })
+
+  it('answers properly once both clocks are present', () => {
+    expect(boardEligibility(s({ timeInGrade: 9, yearsOfService: 14 }))).toBe('Eligible')
+    expect(boardEligibility(s({ timeInGrade: 9, yearsOfService: 2 }))).toBe('Not Eligible')
   })
 })

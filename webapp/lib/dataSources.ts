@@ -49,8 +49,9 @@ export const BASELINE_ROSTER_SOURCE: DataSource = {
   fidelity: 'real-deidentified',
   statement:
     'Real MTARNG assignments — real grades, MOSs, units, component status, time in position, ' +
-    'and ETS dates. Names are withheld; soldiers appear as S-nnnn.',
-  missingFields: ['Date of rank (time in grade)', 'PEBD (time in service)', 'Evaluations', 'PME completion'],
+    'and ETS dates. Date of rank, commissioned service, PME, and civilian education are real for ' +
+    'E7 and above, all warrants, and all officers. Names are withheld; soldiers appear as S-nnnn.',
+  missingFields: ['PEBD (time in service)', 'Evaluations', 'Date of rank below E7'],
 }
 
 export const IMPORTED_ROSTER_SOURCE: DataSource = {

@@ -70,12 +70,52 @@ describe('real de-identified roster', () => {
     for (const s of realRoster) expect(s.timeInPosition).toBeLessThanOrEqual(40)
   })
 
-  it('leaves TIS and TIG at zero rather than fabricating them', () => {
-    // The source extract has neither PEBD nor DOR. Inventing values would make
-    // promotion eligibility look authoritative when it is not knowable.
+  it('leaves time in service at zero rather than fabricating it', () => {
+    // Neither extract carries PEBD, so time in service is genuinely unknowable.
+    // Inventing it would make retirement eligibility and enlisted RCP look
+    // authoritative when they are not.
+    for (const s of realRoster) expect(s.yearsOfService).toBe(0)
+  })
+
+  it('carries real time in grade for the population the leader extract covered', () => {
+    // Date of rank arrived for E7 and above, all warrants, and all officers.
+    // Everyone else stays at 0, which the app reads as Unknown.
+    const known = realRoster.filter(s => s.timeInGrade > 0)
+    expect(known.length).toBeGreaterThan(600)
+    expect(known.length).toBeLessThan(realRoster.length)
+    for (const s of realRoster) expect(s.timeInGrade).toBeLessThanOrEqual(40)
+  })
+
+  it('only knows time in grade for senior grades, never for junior enlisted', () => {
+    // A junior soldier showing a real TIG would mean the enrichment joined to
+    // the wrong person — the leader extract contains nobody below E7.
+    const junior = realRoster.filter(
+      s => s.careerCategory === 'Enlisted' && ['E1', 'E2', 'E3', 'E4', 'E5'].includes(s.rank))
+    expect(junior.length).toBeGreaterThan(500)
+    for (const s of junior) expect(s.timeInGrade).toBe(0)
+  })
+
+  it('records the soldier grade, not the billet grade', () => {
+    // The previous generation stored MIL_GRADE, the billet's authorized grade,
+    // which erased every under- and over-slotted assignment. The tell was that
+    // no E1-E3 existed at all, because no billet is authorized below E4.
+    const junior = realRoster.filter(s => ['E1', 'E2', 'E3'].includes(s.rank))
+    expect(junior.length).toBeGreaterThan(200)
+  })
+
+  it('carries PME where the leader extract supplied education level', () => {
+    const withPme = realRoster.filter(s => s.pmeComplete.length > 0)
+    expect(withPme.length).toBeGreaterThan(600)
+    // PME is cumulative: nobody holds SLC without ALC beneath it.
     for (const s of realRoster) {
-      expect(s.yearsOfService).toBe(0)
-      expect(s.timeInGrade).toBe(0)
+      if (s.pmeComplete.includes('SLC')) expect(s.pmeComplete).toContain('ALC')
+      if (s.pmeComplete.includes('ILE')) expect(s.pmeComplete).toContain('CCC')
+    }
+  })
+
+  it('gives commissioned service only to commissioned officers', () => {
+    for (const s of realRoster) {
+      if (s.commissionedYears > 0) expect(s.careerCategory).not.toBe('Enlisted')
     }
   })
 
