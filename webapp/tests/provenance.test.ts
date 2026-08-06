@@ -6,7 +6,10 @@ import {
 } from '@/lib/dataSources'
 import { AS_OF_ISO, AS_OF_YEAR, asOfDate } from '@/lib/asOf'
 import { summarizeForce, computeManning, boardEligibility } from '@/lib/forceAnalytics'
-import { buildCommanderPrompt, anonymizeSoldier, buildNameMap, rehydrateNames } from '@/lib/commanderAI'
+import {
+  buildCommanderPrompt, anonymizeSoldier, buildNameMap, rehydrateNames,
+  buildSeniorLeaderBlock, buildStagnationBlock,
+} from '@/lib/commanderAI'
 import { importRosterCsv, yearsSince } from '@/lib/rosterImport'
 
 // These tests exist because every bug they cover actually shipped. The theme is
@@ -326,5 +329,55 @@ describe('eligibility never turns an unknown clock into a verdict', () => {
   it('answers properly once both clocks are present', () => {
     expect(boardEligibility(s({ timeInGrade: 9, yearsOfService: 14 }))).toBe('Eligible')
     expect(boardEligibility(s({ timeInGrade: 9, yearsOfService: 2 }))).toBe('Not Eligible')
+  })
+})
+
+describe('the blocks the commander chat adds', () => {
+  const officer = (o: Parameters<typeof soldier>[0]) =>
+    soldier({ rank: 'O5', careerCategory: 'Officer', lastName: 'Rodriguez', firstName: 'Maria', ...o })
+
+  it('never emits a name in the senior leader timeline', () => {
+    const block = buildSeniorLeaderBlock([officer({ anonId: 'S-042', commissionedYears: 27 })], 2026, 10)
+    expect(block).not.toMatch(/Rodriguez/)
+    expect(block).toMatch(/S-042/)
+  })
+
+  it('projects removal from commissioned service, not from today', () => {
+    // O5 cap is 28 years, so 27 years commissioned means removal next year.
+    const block = buildSeniorLeaderBlock([officer({ anonId: 'S-042', commissionedYears: 27 })], 2026, 10)
+    expect(block).toMatch(/2027: 1/)
+  })
+
+  it('separates date-certain removal from a promote-or-separate point', () => {
+    const block = buildSeniorLeaderBlock([
+      officer({ anonId: 'S-001', rank: 'O5', commissionedYears: 27 }),
+      officer({ anonId: 'S-002', rank: 'O4', commissionedYears: 19 }),
+    ], 2026, 10)
+    expect(block).toMatch(/1 of these 2 are O5\/O6/)
+    expect(block).toMatch(/NOT a projected loss/)
+  })
+
+  it('says so plainly when no commission dates exist', () => {
+    const block = buildSeniorLeaderBlock([officer({ commissionedYears: 0 })], 2026, 10)
+    expect(block).toMatch(/cannot be projected/)
+  })
+
+  it('counts time in grade only over soldiers who have a date of rank', () => {
+    const block = buildStagnationBlock([
+      soldier({ rank: 'E7', timeInGrade: 8 }),
+      soldier({ rank: 'E7', timeInGrade: 0 }),   // no DOR — must not count as 0 years
+    ], 3)
+    expect(block).toMatch(/E7: n=1/)
+    expect(block).toMatch(/never treat their absence as a low value/)
+  })
+
+  it('reports no time in grade at all rather than an empty table', () => {
+    const block = buildStagnationBlock([soldier({ timeInGrade: 0 })], 3)
+    expect(block).toMatch(/time in grade is Unknown/)
+  })
+
+  it('tells the model a long time in grade is a signal, not a verdict', () => {
+    const block = buildStagnationBlock([soldier({ rank: 'E7', timeInGrade: 9 })], 3)
+    expect(block).toMatch(/signal to look, not a verdict/)
   })
 })

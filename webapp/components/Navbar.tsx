@@ -25,6 +25,7 @@ const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
     { label: 'Roster', href: '/command/roster' },
     { label: 'Forecast', href: '/command/forecast' },
     { label: 'Succession', href: '/command/succession' },
+    { label: 'Ask Steeves', href: '/command/ask' },
     { label: 'Civilian Skills', href: '/skills' },
     { label: 'Community Impact', href: '/community-impact' },
     { label: 'Mission Builder', href: '/mission-builder' },
@@ -41,6 +42,7 @@ const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
   ],
   g1: [
     { label: 'State Overview', href: '/g1-state-view' },
+    { label: 'Ask Steeves', href: '/g1-state-view/ask' },
     { label: 'Civilian Skills', href: '/skills' },
     { label: 'Community Impact', href: '/community-impact' },
     { label: 'Mission Builder', href: '/mission-builder' },

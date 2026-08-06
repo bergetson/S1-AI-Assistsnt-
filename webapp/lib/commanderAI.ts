@@ -1,7 +1,8 @@
 import type { RosterSoldier, PromotionNeed, Candidate, ManningReport, AttritionYear } from './commandTypes'
 import type { Position } from './types'
 import type { ForceSummary } from './forceAnalytics'
-import { RETENTION_SOURCES } from './data/retention'
+import { RETENTION_SOURCES, commissionedCap } from './data/retention'
+import { RANK_NUM } from './scoring'
 import { rulesContext, AI_GOVERNANCE } from './rules/aiContext'
 import type { RuleReviewInput } from './rules/registry'
 import type { TuningOverrides } from './rules/tuning'
@@ -199,6 +200,76 @@ export function buildRosterBlock(
     : ''
   return `\n\n== ROSTER DETAIL (pseudonymous) ==\n` +
     shown.map(s => anonymizeSoldier(s, includeBullets)).join('\n') + truncated
+}
+
+/**
+ * Statutory removal timeline for commissioned officers.
+ *
+ * This is the sharpest real signal in the data: commission dates are on file,
+ * so 10 USC 14507 removal at 28 years (LTC) and 30 years (COL) is date-certain
+ * and computable per officer. The aggregate attrition block flattens it into a
+ * yearly count, which loses the thing a commander needs — which grade, which
+ * branch, and whether anyone behind them is close.
+ */
+export function buildSeniorLeaderBlock(
+  roster: RosterSoldier[],
+  baseYear: number,
+  horizonYears = 10
+): string {
+  const events = roster
+    .filter(s => s.commissionedYears > 0)
+    .map(s => {
+      const cap = commissionedCap(s.rank)
+      if (!cap) return null
+      return { s, cap, year: Math.max(baseYear, baseYear + Math.ceil(cap.years - s.commissionedYears)) }
+    })
+    .filter((e): e is { s: RosterSoldier; cap: { years: number; certain: boolean }; year: number } =>
+      e !== null && e.year <= baseYear + horizonYears)
+
+  if (events.length === 0) {
+    return '\n\n== STATUTORY OFFICER REMOVAL ==\n' +
+      '  No commission dates on file, so removal for years of commissioned service cannot be projected.'
+  }
+
+  const byYear = new Map<number, typeof events>()
+  for (const e of events) byYear.set(e.year, [...(byYear.get(e.year) ?? []), e])
+
+  const lines = [...byYear.keys()].sort().map(y => {
+    const g = byYear.get(y)!
+    const counts = new Map<string, number>()
+    for (const e of g) counts.set(e.s.rank, (counts.get(e.s.rank) ?? 0) + 1)
+    const who = g.map(e => `${e.s.anonId} ${e.s.rank}/${e.s.mos}`).join(', ')
+    return `  ${y}: ${g.length} — ${[...counts].map(([k, v]) => `${k}:${v}`).join(' ')} — ${who}`
+  })
+
+  const certain = events.filter(e => e.cap.certain).length
+  return `\n\n== STATUTORY OFFICER REMOVAL, ${baseYear}–${baseYear + horizonYears} (from commission date) ==
+${lines.join('\n')}
+${certain} of these ${events.length} are O5/O6 under 10 USC 14507 — date-certain, not board outcomes, and not influenceable.
+The rest are O4 reaching 20 years commissioned service under 10 USC 14506: a promote-or-separate decision point, NOT a projected loss. An O4 selected for O5 fills a vacancy rather than creating one. Say which of the two you mean whenever you cite these numbers.`
+}
+
+/** Grade-by-grade view of who has been sitting still, from real date of rank. */
+export function buildStagnationBlock(roster: RosterSoldier[], staleYears: number): string {
+  const byGrade = new Map<string, number[]>()
+  for (const s of roster) {
+    if (s.timeInGrade > 0) byGrade.set(s.rank, [...(byGrade.get(s.rank) ?? []), s.timeInGrade])
+  }
+  if (byGrade.size === 0) {
+    return '\n\n== TIME IN GRADE ==\n  No date of rank on file for this formation — time in grade is Unknown.'
+  }
+  const lines = [...byGrade.entries()]
+    .sort((a, b) => (RANK_NUM[b[0]] ?? 0) - (RANK_NUM[a[0]] ?? 0))
+    .map(([g, v]) => {
+      const sorted = [...v].sort((a, b) => a - b)
+      const median = sorted[Math.floor(sorted.length / 2)]
+      const stale = sorted.filter(x => x >= 6).length
+      return `  ${g}: n=${sorted.length} median ${median}yr, longest ${sorted[sorted.length - 1]}yr, ${stale} at 6+ yr in grade`
+    })
+  return `\n\n== TIME IN GRADE (real, from date of rank) ==
+${lines.join('\n')}
+Counted only over soldiers whose date of rank is on file. Anyone absent from this list has no DOR recorded and their time in grade is Unknown — never treat their absence as a low value.
+A long time in grade is a signal to look, not a verdict: it can mean a soldier is stalled, or that the grade above them has no vacancy. Distinguish the two before recommending anything. Soldiers are due to move after ${staleYears} years in one seat.`
 }
 
 /** Candidate slate for a specific billet, already scored deterministically. */
