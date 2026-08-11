@@ -155,7 +155,7 @@ registry. Never restate a rule in prompt text; the two copies previously drifted
 
 ### Invariants the tests enforce
 
-Run `npm test` (172 tests). The non-obvious ones:
+Run `npm test` (237 tests). The non-obvious ones:
 
 - Missing data must produce `Unknown`, never a favorable default. Commute with no
   route is marked `excluded`, not scored as neutral. This binds the **AI payload**
@@ -195,6 +195,39 @@ Components named for the *thing they say*, not a flag: `RosterSourceBanner`,
 a fixed `BASE_YEAR`. Never introduce `Math.random()` or `Date.now()` — this is a
 static export and nondeterminism becomes a hydration mismatch. Keying on soldier
 id means roster reordering cannot shift anyone's profile.
+
+### The org chart (`lib/orgChart/`)
+
+`/command/org`, `/g1-state-view/org`, and `/force-structure` all render
+`components/shared/OrgChartView.tsx` with a `mode` prop, so the three audiences
+cannot see differently-shaped versions of the same force.
+
+**`commandStructure.ts` is hand-maintained on purpose.** The MTOE extract encodes
+accounting rollups, not command relationships: `bde` has four disconnected values
+and JFHQ sits *inside* one of them as a peer battalion, so the data contains no
+root at all. The top two levels are therefore transcribed from the org chart
+MTARNG publishes, and every node built from it carries `fromPublishedChart` so
+the UI can draw those edges dashed and say where they came from. Anything the
+table fails to place lands under **Unmapped formations** — never filter that node
+out, it is the only signal the table has drifted.
+
+Below that everything derives from the data: `bn` → `uic` → MTOE paragraph
+prefix → billet. Company identity comes from UIC character 5 (`WTCPA0` = A CO,
+`WTCPA1` = DET 1); section labels are inferred from each group's senior billet
+and flagged `inferredLabel`.
+
+Traps the tests pin down:
+- **TEMPLET lines are keyed on `authorized === false`, not the 9xx paragraph
+  convention.** 166 of the 459 unauthorized billets sit on ordinary paragraph
+  numbers, so the paragraph is a hint and a wrong rule.
+- `(uic, paraLine)` is **not** unique — `WTCPB0` stacks nine `203-01` lines — so
+  grouping must never collapse on it. Only `id` is unique.
+- `layoutTree` centres a parent over its children's *centres*, not over its own
+  span; with uneven subtree widths the two differ visibly.
+- The canvas re-fits on mount and re-root only. Re-fitting on every expand yanks
+  the view out from under the node the user just clicked.
+- Billet tiles are siblings of the card's header button, never children — a
+  `<button>` inside a `<button>` is invalid HTML and fails hydration outright.
 
 ### The planning epoch (`lib/asOf.ts`)
 

@@ -16,12 +16,14 @@ const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
     { label: 'Matches', href: '/matches' },
     { label: 'Planner', href: '/planner' },
     { label: 'Marketplace', href: '/marketplace' },
+    { label: 'Force Structure', href: '/force-structure' },
     { label: 'Reclass', href: '/reclassification' },
     { label: 'Counseling', href: '/counseling' },
     { label: 'Ask Steeves', href: '/ai-mentor' },
   ],
   commander: [
     { label: 'Overview', href: '/command' },
+    { label: 'Org Chart', href: '/command/org' },
     { label: 'Roster', href: '/command/roster' },
     { label: 'Forecast', href: '/command/forecast' },
     { label: 'Succession', href: '/command/succession' },
@@ -42,6 +44,7 @@ const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
   ],
   g1: [
     { label: 'State Overview', href: '/g1-state-view' },
+    { label: 'Org Chart', href: '/g1-state-view/org' },
     { label: 'Ask Steeves', href: '/g1-state-view/ask' },
     { label: 'Civilian Skills', href: '/skills' },
     { label: 'Community Impact', href: '/community-impact' },
