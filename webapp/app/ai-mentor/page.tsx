@@ -251,10 +251,10 @@ export default function AiMentorPage() {
             )}
             <button
               onClick={() => setShowKeySettings(v => !v)}
-              title="Ask Sage API key settings"
+              title="Connect an AI provider (optional)"
               className={`text-sm px-2 py-1 rounded border ${hasCreds ? 'text-gray-400 border-gray-200 hover:text-gray-600' : 'text-amber-700 border-amber-300 bg-amber-50'}`}
             >
-              ⚙ {hasCreds ? '' : 'Set API Key'}
+              ⚙ {hasCreds ? '' : 'Connect AI'}
             </button>
           </div>
         </div>
@@ -262,38 +262,67 @@ export default function AiMentorPage() {
         {/* API key settings panel */}
         {showKeySettings && (
           <div className="px-4 py-3 border-b border-gray-200 bg-amber-50 flex-shrink-0">
+            {/* This is not a login, and it must not look like one. An email +
+                password pair on a *.github.io page carrying Army branding is
+                exactly the pattern a phishing classifier scores on, and it is
+                also genuinely confusing to a soldier: nothing here is a
+                government credential. Say so first, before any field. */}
+            <p className="text-xs text-amber-900 mb-1 font-semibold">
+              This is not a sign-in. Ask Steeves has no accounts.
+            </p>
+            <p className="text-xs text-amber-800 mb-2">
+              Never enter a CAC PIN, AKO / Army 365 password, or any government credential here.
+              Paste an API token you already hold from a commercial AI provider — it stays in this
+              browser and is sent only to that provider.
+            </p>
             <p className="text-xs text-amber-800 mb-2 font-medium">
               {hasCreds
-                ? `Using ${providerName}. Enter new values below to replace the saved keys.`
-                : 'Add a Claude API key (recommended) or Ask Sage credentials. Keys are stored only in this browser and sent nowhere except directly to the AI provider.'}
+                ? `Using ${providerName}. Paste new tokens below to replace the saved ones.`
+                : 'Optional: a Claude API token (recommended) or an Ask Sage account token.'}
             </p>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2 items-center">
                 <span className="text-xs font-semibold text-amber-900 w-20 flex-shrink-0">Claude</span>
                 <input
                   type="password"
+                  name="claude-provider-token"
+                  id="claude-provider-token"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="Claude API token (not a login)"
                   value={claudeKeyInput}
                   onChange={e => setClaudeKeyInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
-                  placeholder={claudeKey ? 'Claude API key (saved — paste to replace)' : 'Claude API key (sk-ant-…)'}
+                  placeholder={claudeKey ? 'Claude API token (saved — paste to replace)' : 'Claude API token (sk-ant-…)'}
                   className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-2 items-center">
                 <span className="text-xs font-semibold text-amber-900 w-20 flex-shrink-0">Ask Sage</span>
                 <input
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  name="asksage-account-id"
+                  id="asksage-account-id"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="Ask Sage account identifier (not a login)"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
-                  placeholder={creds.email ? `Email (current: ${creds.email})` : 'Ask Sage account email…'}
+                  placeholder={creds.email ? `Account (current: ${creds.email})` : 'Ask Sage account identifier…'}
                   className="flex-1 w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
                 <input
                   type="password"
+                  name="asksage-provider-token"
+                  id="asksage-provider-token"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="Ask Sage API token (not a login)"
                   value={keyInput}
                   onChange={e => setKeyInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') saveApiKey() }}
-                  placeholder={creds.apiKey ? 'API key (saved)' : 'Ask Sage API key…'}
+                  placeholder={creds.apiKey ? 'API token (saved)' : 'Ask Sage API token…'}
                   className="flex-1 w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>

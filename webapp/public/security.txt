@@ -1,0 +1,10 @@
+# Ask Steeves — unofficial MTARNG talent-management prototype
+# https://bergetson.github.io/S1-AI-Assistsnt-/
+#
+# This site is a static, open-source demonstration. It has no backend, no
+# database, no user accounts, and no sign-in. It collects no personal data.
+# Full source: https://github.com/bergetson/S1-AI-Assistsnt-
+Contact: https://github.com/bergetson/S1-AI-Assistsnt-/issues
+Preferred-Languages: en
+Canonical: https://bergetson.github.io/S1-AI-Assistsnt-/.well-known/security.txt
+Expires: 2027-09-01T00:00:00.000Z

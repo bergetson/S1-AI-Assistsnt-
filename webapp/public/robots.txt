@@ -1,0 +1,5 @@
+# Ask Steeves — unofficial Montana Army National Guard talent-management prototype.
+# Not a U.S. Army, Department of Defense, or National Guard Bureau system.
+# No sign-in, no accounts, no personal data collected. See /about.
+User-agent: *
+Allow: /

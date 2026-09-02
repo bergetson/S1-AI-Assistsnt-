@@ -222,6 +222,20 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
 
+      {/* Above the fold, above the Army crest: an Army crest on a personal
+          github.io subdomain with nothing disclaiming it is an impersonation
+          signature to a web-reputation filter, and misleading to a soldier. */}
+      <div className="bg-amber-100 border-b-2 border-amber-400 px-4 py-2.5 text-center">
+        <p className="text-xs sm:text-sm text-amber-950">
+          <strong>Unofficial prototype.</strong> Not a U.S. Army, DoD, or National Guard system.
+          No sign-in, no accounts, no government credentials —{' '}
+          <Link href="/about" className="underline font-semibold hover:text-amber-900">
+            what this is
+          </Link>
+          .
+        </p>
+      </div>
+
       {/* ╔══════════════════════════════════════════════════════════════╗ */}
       {/*  HERO                                                          */}
       {/* ╚══════════════════════════════════════════════════════════════╝ */}
@@ -263,7 +277,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 mb-5">
             <div className="h-px w-12 bg-amber-400/60" />
             <span className="text-amber-400 text-xs font-bold tracking-[0.25em] uppercase">
-              Montana Army National Guard · S1 Career Manager
+              Montana Army National Guard · S1 Career Manager · Prototype
             </span>
             <div className="h-px w-12 bg-amber-400/60" />
           </div>
