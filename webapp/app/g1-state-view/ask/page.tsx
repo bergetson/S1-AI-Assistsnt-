@@ -1,13 +1,20 @@
 'use client'
 
-import { ForceAsk } from '@/components/shared/ForceAsk'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-// Statewide scope: the G1 asks the same questions of the whole force, so this
-// shares ForceAsk rather than reimplementing it. Two roles briefed identically.
-export default function G1AskPage() {
+// The G1 State View and the Talent Manager view were the same statewide
+// audience under two names. They are now one role at /talent.
+export default function G1Redirect() {
+  const router = useRouter()
+  useEffect(() => { router.replace('/talent/ask') }, [router])
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ForceAsk scope="state" />
+    <div className="max-w-xl mx-auto mt-24 text-center px-4">
+      <p className="text-gray-600">
+        The G1 State View is now part of the{' '}
+        <Link href="/talent/ask" className="underline text-green-700 font-medium">Talent Manager</Link> view. Redirecting…
+      </p>
     </div>
   )
 }

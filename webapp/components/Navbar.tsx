@@ -8,7 +8,18 @@ import {
   VIEW_MODE_HOME, VIEW_MODE_SUBTITLE, type ViewMode,
 } from '@/lib/viewModeStore';
 
-const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
+/**
+ * A nav entry, or a rule between groups. The talent-manager list carries two
+ * distinct jobs — statewide analysis and the assignment workflow — since the
+ * G1 State View merged into it, and running eleven links together loses that.
+ */
+type NavItem = { label: string; href: string } | { divider: true };
+
+function isDivider(i: NavItem): i is { divider: true } {
+  return 'divider' in i;
+}
+
+export const NAV: Record<ViewMode, NavItem[]> = {
   soldier: [
     { label: 'Home', href: '/' },
     { label: 'Military Profile', href: '/profile' },
@@ -35,25 +46,32 @@ const NAV: Record<ViewMode, Array<{ label: string; href: string }>> = {
   ],
   talent: [
     { label: 'Dashboard', href: '/talent' },
+    { divider: true },
+    // Analysis — what the G1 State View used to be.
+    { label: 'State Analytics', href: '/talent/state' },
+    { label: 'Org Chart', href: '/talent/org' },
+    { label: 'Ask Steeves', href: '/talent/ask' },
+    { divider: true },
+    // Workflow — moving people into billets.
     { label: 'Vacancies', href: '/talent/vacancies' },
     { label: 'Marketplace', href: '/talent/marketplace' },
     { label: 'Civilian Skills', href: '/skills' },
     { label: 'Mission Builder', href: '/mission-builder' },
+    // /community-impact is deliberately absent. This list absorbed the G1
+    // State View, and eleven entries overflow the bar at the xl breakpoint
+    // even with the labels cut down. It is an all-roles tool rather than a
+    // talent-management one, it stays in the commander bar, and the talent
+    // dashboard links it directly — so it is the one entry whose removal
+    // costs a talent manager nothing.
+
+    { divider: true },
+    // The health of the numbers everything above is computed from.
     { label: 'Data Quality', href: '/talent/data-quality' },
     { label: 'Policy Rules', href: '/talent/rules' },
   ],
-  g1: [
-    { label: 'State Overview', href: '/g1-state-view' },
-    { label: 'Org Chart', href: '/g1-state-view/org' },
-    { label: 'Ask Steeves', href: '/g1-state-view/ask' },
-    { label: 'Civilian Skills', href: '/skills' },
-    { label: 'Community Impact', href: '/community-impact' },
-    { label: 'Mission Builder', href: '/mission-builder' },
-    { label: 'Data Quality', href: '/talent/data-quality' },
-  ],
 };
 
-const MODES: ViewMode[] = ['soldier', 'commander', 'talent', 'g1'];
+const MODES: ViewMode[] = ['soldier', 'commander', 'talent'];
 
 /**
  * Exact match for role landing pages so their link does not stay lit while the
@@ -71,7 +89,7 @@ function ModeToggle({ mode, onSwitch, stacked }: {
 }) {
   return (
     <div
-      className={stacked ? 'grid grid-cols-2 gap-1' : 'inline-flex rounded-lg p-0.5 bg-black/25'}
+      className={stacked ? 'grid grid-cols-3 gap-1' : 'inline-flex rounded-lg p-0.5 bg-black/25'}
       role="group"
       aria-label="Switch role view"
     >
@@ -103,7 +121,12 @@ export default function Navbar() {
 
   // The URL wins while browsing, so a deep link into /talent shows talent nav
   // regardless of the stored mode.
-  const activeMode: ViewMode = modeForPath(pathname) ?? mode;
+  // NAV[...] is guarded because `mode` is rehydrated from localStorage, which
+  // may still hold a value this build no longer knows (the retired 'g1' hat).
+  // The store migrates it, but an unmigrated read here would crash the whole
+  // app on its first paint.
+  const resolved = modeForPath(pathname) ?? mode;
+  const activeMode: ViewMode = NAV[resolved] ? resolved : 'soldier';
   const navLinks = NAV[activeMode];
 
   function switchMode(next: ViewMode) {
@@ -140,14 +163,17 @@ export default function Navbar() {
             <ModeToggle mode={activeMode} onSwitch={switchMode} />
             <div className="w-px h-6 bg-white/20" />
             <div className="flex items-center space-x-0.5">
-              {navLinks.map((link) => {
+              {navLinks.map((link, i) => {
+                if (isDivider(link)) {
+                  return <div key={`d${i}`} className="w-px h-5 bg-white/20 mx-1 2xl:mx-1.5" aria-hidden />;
+                }
                 const isActive = isLinkActive(link.href, pathname);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`px-2.5 py-2 rounded-md text-xs font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-amber-300 ${
+                    className={`px-2 2xl:px-2.5 py-2 rounded-md text-xs font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-amber-300 ${
                       isActive
                         ? 'bg-white/20 text-white underline underline-offset-4'
                         : 'text-gray-200 hover:bg-white/10 hover:text-white'
@@ -183,7 +209,10 @@ export default function Navbar() {
           <div className="pb-3 mb-2 border-b border-white/20">
             <ModeToggle mode={activeMode} onSwitch={switchMode} stacked />
           </div>
-          {navLinks.map((link) => {
+          {navLinks.map((link, i) => {
+            if (isDivider(link)) {
+              return <div key={`d${i}`} className="h-px bg-white/20 my-2" aria-hidden />;
+            }
             const isActive = isLinkActive(link.href, pathname);
             return (
               <Link

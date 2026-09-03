@@ -10,7 +10,10 @@
 //   - Nothing appears without a reason a human would care about it.
 //   - Items that cannot be computed say so instead of being silently omitted.
 
-export type ActionRole = 'commander' | 'talent' | 'g1'
+// 'g1' was a third role until the G1 State View merged into the talent-manager
+// view. Every action it ever carried also carried 'talent', so the merge lost
+// nothing — the surviving role sees a strict superset.
+export type ActionRole = 'commander' | 'talent'
 
 export type Urgency = 'Act now' | 'This month' | 'This quarter' | 'Monitor'
 

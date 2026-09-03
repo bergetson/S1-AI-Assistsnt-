@@ -52,7 +52,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   if (noSuccessor.length > 0) {
     out.push({
       id: 'succession.none',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: 'Act now',
       severity: 'critical',
       headline: `${noSuccessor.length} key billet${noSuccessor.length === 1 ? '' : 's'} ${noSuccessor.length === 1 ? 'has' : 'have'} no one ready to take over`,
@@ -111,7 +111,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
     const total = clusterLoss.reduce((n, c) => n + c.f.soldierIds.length, 0)
     out.push({
       id: 'losses.cluster',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: soonest.year <= baseYear + 2 ? 'Act now' : 'This month',
       severity: clusterLoss.some(c => c.f.severity === 'Critical') ? 'critical' : 'high',
       headline: clusterLoss.length === 1
@@ -155,7 +155,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
       .sort((a, b) => a.fillPct - b.fillPct)
     out.push({
       id: 'manning.low',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: 'This quarter',
       severity: manning.totalFillPct < 70 ? 'high' : 'moderate',
       headline: `Your formation is at ${manning.totalFillPct}% fill`,
@@ -197,7 +197,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
     const leaders = twoYear.filter(s => ['E7', 'E8', 'E9', 'O4', 'O5', 'O6', 'W4', 'W5'].includes(s.rank))
     out.push({
       id: 'losses.twoYear',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: 'This month',
       severity: leaders.length >= 5 ? 'high' : 'moderate',
       headline: `${twoYear.length} soldier${twoYear.length === 1 ? '' : 's'} could depart within two years`,
@@ -219,7 +219,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
     const pct = Math.round((notMosq.length / people.length) * 100)
     out.push({
       id: 'readiness.mosq',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: pct >= 20 ? 'This month' : 'This quarter',
       severity: pct >= 25 ? 'high' : 'moderate',
       headline: `${notMosq.length} soldier${notMosq.length === 1 ? ' is' : 's are'} not MOS-qualified (${pct}% of the formation)`,
@@ -239,13 +239,13 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   if (gaps.length > 0) {
     out.push({
       id: 'manning.mos',
-      roles: ['talent', 'g1'],
+      roles: ['talent'],
       urgency: 'This quarter',
       severity: 'moderate',
       headline: `${gaps.length} MOS${gaps.length === 1 ? '' : 's'} ${gaps.length === 1 ? 'is' : 'are'} meaningfully undermanned`,
       why: 'These specialties cannot cover their authorized billets with the people on hand.',
       action: 'Target recruiting and reclassification at these MOSs specifically.',
-      href: '/g1-state-view',
+      href: '/talent/state',
       linkLabel: 'See talent gaps',
       count: gaps.length,
       examples: fmtList(gaps.map(g => `${g.mos}: ${g.assigned}/${g.authorized} (${g.fillPct}%)`)),
@@ -305,7 +305,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   if (noDates) {
     out.push({
       id: 'data.serviceDates',
-      roles: ['commander', 'talent', 'g1'],
+      roles: ['commander', 'talent'],
       urgency: 'This month',
       severity: 'high',
       headline: 'Promotion planning is switched off because two columns are missing',
@@ -320,7 +320,7 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   if (unmatched > 0) {
     out.push({
       id: 'data.unmatched',
-      roles: ['talent', 'g1'],
+      roles: ['talent'],
       urgency: 'This quarter',
       severity: 'moderate',
       headline: `${unmatched} soldier${unmatched === 1 ? ' is' : 's are'} assigned to a unit that is not in the force structure`,

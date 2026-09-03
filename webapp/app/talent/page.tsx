@@ -95,8 +95,10 @@ export default function TalentDashboardPage() {
             Talent Management Dashboard
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-3xl">
-            Statewide view for S1/G1 talent managers: where the vacancies are, who is eligible and
-            interested, where the pipelines are thin, and where the data cannot yet support a decision.
+            The statewide view for S1/G1 talent managers: where the vacancies are, who is eligible
+            and interested, where the pipelines are thin, and where the data cannot yet support a
+            decision. Deeper cuts — distribution, AGR balance, succession risk, the county heatmap —
+            live in <span className="whitespace-nowrap">State Analytics</span>.
           </p>
         </div>
       </div>
@@ -115,7 +117,7 @@ export default function TalentDashboardPage() {
               <Tile label="Open vacancies" value={vacancies.length} href="/talent/vacancies" />
               <Tile label="Critical / KD vacancies" value={criticalVacancies.length} tone="bad" href="/talent/vacancies" />
               <Tile label="Projected losses (2 yr)" value={projectedLosses.length} tone="warn" />
-              <Tile label="Positions with no successor" value="See report" href="/command/succession" />
+              <Tile label="Positions with no successor" value="See report" href="/talent/state?tab=succession" />
             </div>
           </section>
 
@@ -139,6 +141,29 @@ export default function TalentDashboardPage() {
               <Tile label="Applications" value={applications.length} href="/talent/marketplace" />
               <Tile label="Pending review" value={pendingReview} tone={pendingReview > 0 ? 'warn' : 'neutral'} href="/talent/marketplace" />
               <Tile label="Selected" value={applications.filter(a => a.status === 'Selected').length} tone="good" href="/talent/marketplace" />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">
+              Statewide analysis
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Tile label="Force distribution" value="By grade, unit, county"
+                href="/talent/state?tab=distribution" />
+              <Tile label="AGR vs M-Day" value="Full-time balance" href="/talent/state?tab=fts" />
+              <Tile label="Succession risk" value="Single points of failure"
+                href="/talent/state?tab=succession" />
+              <Tile label="Talent heatmap" value="Where people are"
+                href="/talent/state?tab=heatmap" />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+              <Tile label="Org chart" value="Whole force" href="/talent/org" />
+              <Tile label="Civilian skills" value="Statewide search" href="/skills" />
+              {/* Not in the talent nav — eleven entries did not fit — so this
+                  tile is how a talent manager reaches it. */}
+              <Tile label="Community impact" value="If we activate" href="/community-impact" />
+              <Tile label="Ask Steeves" value="About the whole force" href="/talent/ask" />
             </div>
           </section>
 

@@ -114,9 +114,24 @@ In `.env.local` the variable is `ANTHROPIC_API_KEY` (used by the SDK server-side
 
 ## Talent management layer (added in the prototype expansion)
 
-Four role views, switched by a navbar toggle backed by `lib/viewModeStore.ts`
-(`mtarng-viewmode`). `modeForPath()` makes the URL authoritative so deep links
-always render the right nav.
+**Three** role views — Soldier, Commander, Talent Manager — switched by a navbar
+toggle backed by `lib/viewModeStore.ts` (`mtarng-viewmode`). `modeForPath()`
+makes the URL authoritative so deep links always render the right nav.
+
+There was a fourth, `g1`, until the G1 State View merged into the Talent
+Manager. They were always the same audience — both statewide, both unfiltered
+by formation, and every action carrying the `g1` role also carried `talent`, so
+the surviving role sees a strict superset. `mtarng-viewmode` is persisted, so
+the store carries a `version: 1` migration mapping `g1 → talent`; without it a
+returning user's stored mode indexes the navbar's link table as `undefined` and
+crashes on first paint. `Navbar` keeps a `NAV[mode] ?? soldier` fallback behind
+that. The old `/g1-state-view*` paths survive as client-side redirect stubs and
+`modeForPath()` still maps them to `talent`, so a bookmark does not flash the
+wrong nav on its way through.
+
+The merged nav is grouped by a `{ divider: true }` NavItem: analysis (State
+Analytics, Org Chart, Ask Steeves) · workflow (Vacancies, Marketplace, Skills,
+Community Impact, Mission Builder) · data health (Data Quality, Policy Rules).
 
 | Route | Role | Purpose |
 |-------|------|---------|
@@ -125,12 +140,14 @@ always render the right nav.
 | `/skills` | All | Statewide civilian capability search + CSV export |
 | `/community-impact` | All | Potential community impact of an activation |
 | `/mission-builder` | All | Mission requirements → candidates → 3 deterministic COAs |
-| `/talent` | Talent Mgr | Vacancies, people, marketplace, data/policy health |
+| `/talent` | Talent Mgr | Dashboard — vacancies, people, marketplace, data/policy health |
+| `/talent/state` | Talent Mgr | Statewide distribution, FTS balance, gaps, succession, heatmap. Tabs are deep-linkable via `?tab=`, which is why the page splits around a `<Suspense>` boundary — `useSearchParams` will not prerender without one |
+| `/talent/org` | Talent Mgr | `OrgChartView mode="manager"`, same component as `/command/org` |
+| `/talent/ask` | Talent Mgr | `ForceAsk scope="state"`, same component as `/command/ask` |
 | `/talent/vacancies` | Talent Mgr | Current + projected vacancies, candidate depth |
 | `/talent/marketplace` | Talent Mgr | Slate review, endorsements, status transitions |
 | `/talent/data-quality` | Talent Mgr | Detected issues, completeness, CSV export |
 | `/talent/rules` | Talent Mgr | Every policy rule with status and authority |
-| `/g1-state-view` | G1 | Statewide distribution, FTS balance, gaps, succession, heatmap |
 
 ### Pure-logic modules (migration targets)
 
@@ -184,7 +201,7 @@ export, and AI prompt reads a `DataSource[]` from `useForceData().sources`
 `isDemo` boolean** — the billets are real, the roster is real but de-identified,
 and the civilian layer is generated, so one flag covering all three is always a
 lie about at least one of them. The previous ad-hoc booleans drifted until
-`/g1-state-view` claimed data was "imported" while `/command/succession` told
+`/talent/state` claimed data was "imported" while `/command/succession` told
 the model the real force was "SYNTHETIC DEMONSTRATION DATA".
 
 Only `fidelity: 'synthetic'` warrants a warning colour — see `isDemoFidelity()`.
@@ -198,7 +215,7 @@ id means roster reordering cannot shift anyone's profile.
 
 ### The org chart (`lib/orgChart/`)
 
-`/command/org`, `/g1-state-view/org`, and `/force-structure` all render
+`/command/org`, `/talent/org`, and `/force-structure` all render
 `components/shared/OrgChartView.tsx` with a `mode` prop, so the three audiences
 cannot see differently-shaped versions of the same force.
 

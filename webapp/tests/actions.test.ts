@@ -80,9 +80,30 @@ describe('action feed', () => {
     ]
     const roster = [soldier({ id: 'a', uic: 'U', rank: 'E5', timeInPosition: 5 })]
     const items = buildActions({ ...base, positions, roster, uics: ['U'] })
-    for (const r of ['commander', 'talent', 'g1'] as const) {
+    for (const r of ['commander', 'talent'] as const) {
       for (const i of actionsForRole(items, r)) expect(i.roles).toContain(r)
     }
+  })
+
+  it('leaves no action unreachable by any role', () => {
+    // The G1 role was removed when its view merged into the talent manager's.
+    // An action left carrying only the retired role would vanish silently:
+    // still built, still correct, and shown to nobody.
+    const positions = [
+      position({ id: 1, uic: 'U', grade: 'E7', isCommandOrKD: true }),
+      position({ id: 2, uic: 'U', grade: 'E5' }),
+    ]
+    const roster = [
+      soldier({ id: 'a', uic: 'U', rank: 'E5', timeInPosition: 5 }),
+      soldier({ id: 'b', uic: 'U', rank: 'E6', flagged: true }),
+    ]
+    const items = buildActions({ ...base, positions, roster, uics: ['U'] })
+    expect(items.length).toBeGreaterThan(0)
+    const reachable = new Set([
+      ...actionsForRole(items, 'commander').map(i => i.id),
+      ...actionsForRole(items, 'talent').map(i => i.id),
+    ])
+    for (const i of items) expect(reachable.has(i.id), `${i.id} reaches no role`).toBe(true)
   })
 
   it('is deterministic and order-independent', () => {

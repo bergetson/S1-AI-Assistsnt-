@@ -1,9 +1,20 @@
 'use client'
 
-import { OrgChartView } from '@/components/shared/OrgChartView'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-// Same component as /command/org. The chart is the whole force either way, so
-// the two roles cannot end up looking at different shapes of the organization.
-export default function G1OrgPage() {
-  return <OrgChartView mode="manager" />
+// The G1 State View and the Talent Manager view were the same statewide
+// audience under two names. They are now one role at /talent.
+export default function G1Redirect() {
+  const router = useRouter()
+  useEffect(() => { router.replace('/talent/org') }, [router])
+  return (
+    <div className="max-w-xl mx-auto mt-24 text-center px-4">
+      <p className="text-gray-600">
+        The G1 State View is now part of the{' '}
+        <Link href="/talent/org" className="underline text-green-700 font-medium">Talent Manager</Link> view. Redirecting…
+      </p>
+    </div>
+  )
 }
